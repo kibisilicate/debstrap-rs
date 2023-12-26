@@ -22,10 +22,21 @@ git clone https://github.com/kibisilicate/debstrap-rs.git
 cd ./debstrap-rs
 ```
 
+### Using make
+
 Manually compile and install:
 
 ```
 make
 sudo make install
+```
+
+### Building Package
+
+Build and install .deb package:
+
+```
+sudo debuild --unsigned-source --unsigned-changes
+sudo dpkg --install ../debstrap_0.0.1_*.deb
 ```
 

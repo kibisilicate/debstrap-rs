@@ -1,0 +1,25 @@
+Source: debstrap
+Section: admin
+Priority: optional
+Maintainer: Steph Panagaea <>
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13)
+Vcs-Git: https://github.com/kibisilicate/debstrap-rs.git
+Vcs-Browser: https://github.com/kibisilicate/debstrap-rs
+
+Package: debstrap
+Architecture: any
+Depends: binutils,
+         gzip,
+         mount,
+         xz-utils
+Recommends: arch-test,
+            binfmt-support,
+            bzip2,
+            qemu-user-static,
+            sudo,
+            zstd
+Suggests: debootstrap,
+          mmdebstrap
+Description: Bootstrap overly complicated Debian systems
+

@@ -1,0 +1,7 @@
+#! /usr/bin/make -f
+
+DESTDIR=$(CURDIR)/debian/debstrap
+
+%:
+	dh $@
+

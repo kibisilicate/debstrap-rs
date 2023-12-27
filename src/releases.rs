@@ -24,8 +24,9 @@ pub const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub const UBUNTU_CURRENT_SUITES: [&str; 8] = [
+pub const UBUNTU_CURRENT_SUITES: [&str; 9] = [
     "devel",  // alias for latest version
+    "noble",  // Ubuntu 24.04 LTS
     "mantic", // Ubuntu 23.10
     "lunar",  // Ubuntu 23.04
     "jammy",  // Ubuntu 22.04 LTS

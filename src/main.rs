@@ -5,7 +5,7 @@ pub mod functions;
 use releases::*;
 pub mod releases;
 
-use byte_unit::{Byte, ByteUnit};
+use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -773,7 +773,8 @@ fn main() -> ExitCode {
     };
 
     if target_actions_to_skip.contains(&String::from("output_directory_check")) == true
-        || target_output_format != "directory" || discard_output_on_exit == true
+        || target_output_format != "directory"
+        || discard_output_on_exit == true
     {
         print_message("debug", "skipping output directory check.", &message_config);
     } else {
@@ -2153,11 +2154,11 @@ fn main() -> ExitCode {
             space_and_truncate_string(&package.architecture, architecture_length);
         let package_description: String =
             space_and_truncate_string(&package.description, description_length);
-        let package_size: String = String::from(
-            &Byte::from_unit(*&package.file_size as f64, ByteUnit::KiB)
+        let package_size: String = format!(
+            "{:.3}",
+            &Byte::from_f64_with_unit(*&package.file_size as f64, Unit::KiB)
                 .unwrap()
-                .get_appropriate_unit(false)
-                .to_string() as &str,
+                .get_appropriate_unit(UnitType::Binary),
         );
 
         let line_to_print: String = format!(

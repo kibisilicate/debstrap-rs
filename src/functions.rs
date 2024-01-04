@@ -462,6 +462,9 @@ pub fn manually_merge_usr_directories(
             "i386" => {
                 usr_directories_to_symlink.extend(["lib64", "libx32"]);
             }
+            "loong64" => {
+                usr_directories_to_symlink.extend(["lib32", "lib64"]);
+            }
             "mipsel" => {
                 usr_directories_to_symlink.extend(["lib32", "lib64"]);
             }

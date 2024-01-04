@@ -77,6 +77,7 @@ declare -a architectures=(
   #'hppa'
   #'i386'
   #'ia64'
+  #'loong64'
   #'m68k'
   #'mips64el'
   #'mipsel'

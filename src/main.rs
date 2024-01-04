@@ -986,6 +986,11 @@ fn main() -> ExitCode {
                     target_architectures.push(String::from("ia64"));
                 };
             }
+            "loong64" | "loongarch64" => {
+                if target_architectures.contains(&String::from("loong64")) == false {
+                    target_architectures.push(String::from("loong64"));
+                };
+            }
             "m68k" => {
                 if target_architectures.contains(&String::from("m68k")) == false {
                     target_architectures.push(String::from("m68k"));

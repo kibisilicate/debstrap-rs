@@ -209,6 +209,8 @@ An alias that selects all the architectures the host kernel natively supports.
 
 **ia64**
 
+**loong64**, **loongarch64**
+
 **m68k**
 
 **mips64el**, **mips64**

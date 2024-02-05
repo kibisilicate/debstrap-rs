@@ -4010,23 +4010,42 @@ $shell_code
         return ExitCode::from(1);
     };
 
+    let mut start_stop_daemon_location: String = String::new();
+
+    if Path::new(&format!(
+        "{target_bootstrap_directory}/sbin/start-stop-daemon"
+    ))
+    .is_file()
+        == true
+    {
+        start_stop_daemon_location = format!("{target_bootstrap_directory}/sbin/start-stop-daemon");
+    } else if Path::new(&format!(
+        "{target_bootstrap_directory}/usr/sbin/start-stop-daemon"
+    ))
+    .is_file()
+        == true
+    {
+        start_stop_daemon_location =
+            format!("{target_bootstrap_directory}/usr/sbin/start-stop-daemon");
+    };
+
+    let start_stop_daemon_location: String = start_stop_daemon_location;
+
     print_message(
         "debug",
-        &format!("renaming file \"{target_bootstrap_directory}/sbin/start-stop-daemon\" to \"{target_bootstrap_directory}/sbin/start-stop-daemon.ORIGINAL\""),
+        &format!("renaming file \"{start_stop_daemon_location}\" to \"{start_stop_daemon_location}.ORIGINAL\""),
         &message_config,
     );
     if std::fs::rename(
-        format!("{target_bootstrap_directory}/sbin/start-stop-daemon"),
-        format!("{target_bootstrap_directory}/sbin/start-stop-daemon.ORIGINAL"),
+        format!("{start_stop_daemon_location}"),
+        format!("{start_stop_daemon_location}.ORIGINAL"),
     )
     .is_err()
         == true
     {
         print_message(
             "error",
-            &format!(
-                "failed to rename file \"{target_bootstrap_directory}/sbin/start-stop-daemon\""
-            ),
+            &format!("failed to rename file \"{start_stop_daemon_location}\""),
             &message_config,
         );
 
@@ -4043,12 +4062,12 @@ $shell_code
 
     print_message(
         "debug",
-        &format!("creating temporary file \"{target_bootstrap_directory}/sbin/start-stop-daemon\""),
+        &format!("creating temporary file \"{start_stop_daemon_location}\""),
         &message_config,
     );
 
     if create_file(
-        &format!("{target_bootstrap_directory}/sbin/start-stop-daemon"),
+        &format!("{start_stop_daemon_location}"),
         "#! /bin/sh\n\necho -e '\\nWarning: Fake start-stop-daemon called, doing nothing'\n\nexit 0\n",
         &message_config,
     ).is_err() == true {
@@ -4062,13 +4081,10 @@ $shell_code
         return ExitCode::from(1);
     };
 
-    if run_cmd!(chmod 0755 "$target_bootstrap_directory/sbin/start-stop-daemon" 2> /dev/stdout)
-        .is_err()
-        == true
-    {
+    if run_cmd!(chmod 0755 "$start_stop_daemon_location" 2> /dev/stdout).is_err() == true {
         print_message(
             "error",
-            &format!("failed to change permissions of file \"{target_bootstrap_directory}/sbin/start-stop-daemon\""),
+            &format!("failed to change permissions of file \"{start_stop_daemon_location}\""),
             &message_config,
         );
 
@@ -4322,21 +4338,14 @@ $shell_code
 
     print_message(
         "debug",
-        &format!("removing temporary file \"{target_bootstrap_directory}/sbin/start-stop-daemon\""),
+        &format!("removing temporary file \"{start_stop_daemon_location}\""),
         &message_config,
     );
 
-    if std::fs::remove_file(format!(
-        "{target_bootstrap_directory}/sbin/start-stop-daemon"
-    ))
-    .is_err()
-        == true
-    {
+    if std::fs::remove_file(format!("{start_stop_daemon_location}")).is_err() == true {
         print_message(
             "error",
-            &format!(
-                "failed to remove file \"{target_bootstrap_directory}/sbin/start-stop-daemon\""
-            ),
+            &format!("failed to remove file \"{start_stop_daemon_location}\""),
             &message_config,
         );
 
@@ -4353,20 +4362,20 @@ $shell_code
 
     print_message(
         "debug",
-        &format!("renaming file \"{target_bootstrap_directory}/sbin/start-stop-daemon.ORIGINAL\" to \"{target_bootstrap_directory}/sbin/start-stop-daemon\""),
+        &format!("renaming file \"{start_stop_daemon_location}.ORIGINAL\" to \"{start_stop_daemon_location}\""),
         &message_config,
     );
 
     if std::fs::rename(
-        format!("{target_bootstrap_directory}/sbin/start-stop-daemon.ORIGINAL"),
-        format!("{target_bootstrap_directory}/sbin/start-stop-daemon"),
+        format!("{start_stop_daemon_location}.ORIGINAL"),
+        format!("{start_stop_daemon_location}"),
     )
     .is_err()
         == true
     {
         print_message(
             "error",
-            &format!("failed to rename file \"{target_bootstrap_directory}/sbin/start-stop-daemon.ORIGINAL\""),
+            &format!("failed to rename file \"{start_stop_daemon_location}.ORIGINAL\""),
             &message_config,
         );
 

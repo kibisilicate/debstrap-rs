@@ -2,6 +2,8 @@ use algorithms::*;
 pub mod algorithms;
 use functions::*;
 pub mod functions;
+use package::*;
+pub mod package;
 use releases::*;
 pub mod releases;
 
@@ -9,6 +11,7 @@ use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
+use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::path::Path;
 use std::process::ExitCode;
@@ -1762,20 +1765,25 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    let mut package_list: Vec<String> = Vec::new();
+    let mut package_database: HashMap<String, Package> = HashMap::new();
 
     match std::fs::read_to_string(format!("{workspace_directory}/Packages")) {
         Ok(result) => {
-            package_list = result
+            for entry in result
                 .trim()
                 .split("\n\n")
                 .map(|element| String::from(element))
-                .collect();
+                .collect::<Vec<String>>()
+            {
+                let package: Package = Package::new(&entry);
+
+                package_database.insert(package.name.clone(), package);
+            }
         }
         Err(..) => {}
     };
 
-    let package_list: Vec<String> = package_list;
+    let package_database: HashMap<String, Package> = package_database;
 
     //////////////////////////////////////////////
 
@@ -1783,80 +1791,53 @@ fn main() -> ExitCode {
 
     match &target_variant as &str {
         "essential" => {
-            for entry in &package_list {
-                if entry.contains("\nEssential: yes\n") == true {
-                    for line in entry.lines() {
-                        if line.starts_with("Package: ") == true {
-                            initial_package_set.push(line.replacen("Package: ", "", 1));
-                            break;
-                        };
-                    }
+            for package in package_database.values() {
+                if package.is_essential == true {
+                    initial_package_set.push(package.name.clone());
                 };
             }
 
             initial_package_set.push(String::from("mawk"));
         }
         "required" => {
-            for entry in &package_list {
-                if entry.contains("\nEssential: yes\n") == true
-                    || entry.contains("\nPriority: required\n") == true
-                {
-                    for line in entry.lines() {
-                        if line.starts_with("Package: ") == true {
-                            initial_package_set.push(line.replacen("Package: ", "", 1));
-                            break;
-                        };
-                    }
+            for package in package_database.values() {
+                if package.is_essential == true || package.priority == "required" {
+                    initial_package_set.push(package.name.clone());
                 };
             }
 
             initial_package_set.push(String::from("apt"));
         }
         "buildd" => {
-            for entry in &package_list {
-                if entry.contains("\nEssential: yes\n") == true
-                    || entry.contains("\nPriority: required\n") == true
-                    || entry.contains("\nBuild-Essential: yes\n") == true
+            for package in package_database.values() {
+                if package.is_essential == true
+                    || package.priority == "required"
+                    || package.is_build_essential == true
                 {
-                    for line in entry.lines() {
-                        if line.starts_with("Package: ") == true {
-                            initial_package_set.push(line.replacen("Package: ", "", 1));
-                            break;
-                        };
-                    }
+                    initial_package_set.push(package.name.clone());
                 };
             }
 
             initial_package_set.extend([String::from("apt"), String::from("build-essential")]);
         }
         "important" => {
-            for entry in &package_list {
-                if entry.contains("\nEssential: yes\n") == true
-                    || entry.contains("\nPriority: required\n") == true
-                    || entry.contains("\nPriority: important\n") == true
+            for package in package_database.values() {
+                if package.is_essential == true
+                    || package.priority == "required"
+                    || package.priority == "important"
                 {
-                    for line in entry.lines() {
-                        if line.starts_with("Package: ") == true {
-                            initial_package_set.push(line.replacen("Package: ", "", 1));
-                            break;
-                        };
-                    }
+                    initial_package_set.push(package.name.clone());
                 };
             }
         }
         "standard" => {
-            for entry in &package_list {
-                if entry.contains("\nEssential: yes\n") == true
-                    || entry.contains("\nPriority: required\n") == true
-                    || entry.contains("\nPriority: important\n") == true
-                    || entry.contains("\nPriority: standard\n") == true
+            for package in package_database.values() {
+                if package.is_essential == true
+                    || package.priority == "required"
+                    || package.priority == "important"
+                    || package.priority == "standard"
                 {
-                    for line in entry.lines() {
-                        if line.starts_with("Package: ") == true {
-                            initial_package_set.push(line.replacen("Package: ", "", 1));
-                            break;
-                        };
-                    }
+                    initial_package_set.push(package.name.clone());
                 };
             }
         }
@@ -1959,22 +1940,21 @@ fn main() -> ExitCode {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    let mut target_package_set: Vec<TargetPackage> = Vec::new();
+    let mut target_package_set: Vec<Package> = Vec::new();
 
     match &target_resolver as &str {
         "internal" => {
             println!("Calculating dependencies ...");
 
             match resolve_dependencies(
-                &package_list,
+                &package_database,
                 &initial_package_set,
-                &target_mirrors[0],
                 &consider_recommends,
                 &packages_to_prohibit,
                 &message_config,
             ) {
-                Ok(value) => {
-                    target_package_set = value;
+                Ok(result) => {
+                    target_package_set = result;
                 }
                 Err(..) => {
                     clean_up_on_exit(
@@ -1989,54 +1969,35 @@ fn main() -> ExitCode {
             };
         }
         "none" => {
-            for package in &initial_package_set {
-                let mut version: String = String::new();
-                let mut architecture: String = String::new();
-                let mut description: String = String::new();
-                let mut file_size: f64 = 0.0;
-                let mut file_name: String = String::new();
+            for initial in &initial_package_set {
+                match package_database.get(initial) {
+                    Some(result) => {
+                        target_package_set.push(result.clone());
+                    }
+                    None => {
+                        print_message(
+                            "error",
+                            &format!("failed to find package: \"{initial}\""),
+                            &message_config,
+                        );
 
-                for entry in &package_list {
-                    if entry.starts_with(&format!("Package: {package}\n")) == true {
-                        for line in entry
-                            .lines()
-                            .map(|element| String::from(element.trim()))
-                            .collect::<Vec<String>>()
-                        {
-                            if line.starts_with(&format!("Version: ")) == true {
-                                version = line.replacen("Version: ", "", 1);
-                            } else if line.starts_with(&format!("Architecture: ")) == true {
-                                architecture = line.replacen("Architecture: ", "", 1);
-                            } else if line.starts_with(&format!("Description: ")) == true {
-                                description = line.replacen("Description: ", "", 1);
-                            } else if line.starts_with(&format!("Size: ")) == true {
-                                file_size = line.replacen("Size: ", "", 1).parse().unwrap();
-                            } else if line.starts_with(&format!("Filename: ")) == true {
-                                file_name = line.replacen("Filename: ", "", 1);
-                            };
-                        }
+                        clean_up_on_exit(
+                            &workspace_directory,
+                            None,
+                            &target_actions_to_skip,
+                            &message_config,
+                        )
+                        .unwrap_or(());
 
-                        break;
-                    };
-                }
-
-                let target_package: TargetPackage = TargetPackage {
-                    name: String::from(package),
-                    version: version,
-                    architecture: architecture,
-                    description: description,
-                    file_size: file_size,
-                    file_name: file_name,
-                    uri: String::from(&target_mirrors[0]),
+                        return ExitCode::from(1);
+                    }
                 };
-
-                target_package_set.push(target_package);
             }
         }
         _ => {}
     };
 
-    let target_package_set: Vec<TargetPackage> = target_package_set;
+    let target_package_set: Vec<Package> = target_package_set;
 
     //////////////////////////////////////////////
 
@@ -2590,57 +2551,39 @@ $shell_code
     if extract_only_essentials == true {
         println!("Preparing to extract essentials ...");
 
-        let mut list_of_current_packages: Vec<String> = Vec::new();
-
-        for package in &downloaded_package_file_names {
-            match extract_deb_control_field(
-                "ar",
-                &format!("{downloaded_packages_directory}/{package}"),
-                &message_config,
-            ) {
-                Ok(result) => {
-                    list_of_current_packages.push(result);
-                }
-                Err(..) => {
-                    clean_up_on_exit(
-                        &workspace_directory,
-                        Some(&target_bootstrap_directory),
-                        &target_actions_to_skip,
-                        &message_config,
-                    )
-                    .unwrap_or(());
-
-                    return ExitCode::from(1);
-                }
-            };
-        }
-
-        //////////////////////////////////////////
-
         let mut initial_essential_subset: Vec<String> = Vec::new();
 
-        for entry in &list_of_current_packages {
-            if entry.contains("\nEssential: yes\n") == true {
-                for line in entry
-                    .lines()
-                    .map(|element| String::from(element.trim()))
-                    .collect::<Vec<String>>()
-                {
-                    if line.starts_with("Package: ") == true {
-                        initial_essential_subset.push(line.replacen("Package: ", "", 1));
-                        break;
-                    };
-                }
+        let mut is_awk_present: bool = false;
+
+        for package in &target_package_set {
+            if package.is_essential == true {
+                initial_essential_subset.push(package.name.clone());
+            };
+
+            if is_awk_present == false {
+                match &package.name as &str {
+                    "mawk" => {
+                        packages_to_consider_essential.push(String::from("mawk"));
+                        is_awk_present = true;
+                    }
+                    "original-awk" => {
+                        packages_to_consider_essential.push(String::from("original-awk"));
+                        is_awk_present = true;
+                    }
+                    "gawk" => {
+                        packages_to_consider_essential.push(String::from("gawk"));
+                        is_awk_present = true;
+                    }
+                    _ => {}
+                };
+            };
+
+            if package.name == "usrmerge" {
+                packages_to_consider_essential.push(String::from("usrmerge"));
             };
         }
 
-        if package_set_contains(&target_package_set, "mawk") == true {
-            packages_to_consider_essential.push(String::from("mawk"));
-        } else if package_set_contains(&target_package_set, "original-awk") == true {
-            packages_to_consider_essential.push(String::from("original-awk"));
-        } else if package_set_contains(&target_package_set, "gawk") == true {
-            packages_to_consider_essential.push(String::from("gawk"));
-        } else {
+        if is_awk_present == false {
             print_message(
                 "error",
                 "no packages that provide \"awk\" are present.",
@@ -2656,10 +2599,6 @@ $shell_code
             .unwrap_or(());
 
             return ExitCode::from(1);
-        };
-
-        if package_set_contains(&target_package_set, "usrmerge") == true {
-            packages_to_consider_essential.push(String::from("usrmerge"));
         };
 
         packages_to_consider_essential.sort_unstable();
@@ -2724,33 +2663,29 @@ $shell_code
 
         print_message("debug", "calculating essential subset.", &message_config);
 
-        let target_essential_subset: Vec<TargetPackage>;
+        let target_essential_subset: Vec<Package>;
 
         match resolve_dependencies(
-            &list_of_current_packages,
+            &package_database,
             &initial_essential_subset,
-            &target_mirrors[0],
-            &false,
+            &consider_recommends,
             &packages_to_prohibit,
             &message_config,
         ) {
-            Ok(value) => {
-                target_essential_subset = value;
+            Ok(result) => {
+                target_essential_subset = result;
             }
             Err(..) => {
                 clean_up_on_exit(
                     &workspace_directory,
-                    Some(&target_bootstrap_directory),
+                    None,
                     &target_actions_to_skip,
                     &message_config,
                 )
                 .unwrap_or(());
-
                 return ExitCode::from(1);
             }
         };
-
-        let target_essential_subset: Vec<TargetPackage> = target_essential_subset;
 
         println!("Separating essentials from non-essentials ...");
 
@@ -3311,7 +3246,7 @@ $shell_code
 
     //////////////////////////////////////////////
 
-    if package_set_contains(&target_package_set, "dash") == false {
+    if target_package_set.contains(package_database.get("dash").unwrap()) == false {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/bin/bash\" to \"{target_bootstrap_directory}/bin/sh\""),
@@ -3359,7 +3294,7 @@ $shell_code
         };
     };
 
-    if package_set_contains(&target_package_set, "mawk") == true {
+    if target_package_set.contains(package_database.get("mawk").unwrap()) == true {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/mawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
@@ -3382,7 +3317,7 @@ $shell_code
 
             return ExitCode::from(1);
         };
-    } else if package_set_contains(&target_package_set, "original-awk") == true {
+    } else if target_package_set.contains(package_database.get("original-awk").unwrap()) == true {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/original-awk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
@@ -3405,7 +3340,7 @@ $shell_code
 
             return ExitCode::from(1);
         };
-    } else if package_set_contains(&target_package_set, "gawk") == true {
+    } else if target_package_set.contains(package_database.get("gawk").unwrap()) == true {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/gawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
@@ -3637,7 +3572,7 @@ $shell_code
 
     //////////////////////////////////////////////
 
-    if package_set_contains(&target_package_set, "apt") == true {
+    if target_package_set.contains(package_database.get("apt").unwrap()) == true {
         match &sources_list_format as &str {
             "deb822-style" => {
                 if Path::new(&format!(
@@ -4115,7 +4050,7 @@ $shell_code
         return ExitCode::from(1);
     };
 
-    if package_set_contains(&target_package_set, "dash") == false {
+    if target_package_set.contains(package_database.get("dash").unwrap()) == false {
         if run_cmd!(
             chroot "$target_bootstrap_directory" /usr/bin/env --ignore-environment bash -c "
 export HOME='/root'

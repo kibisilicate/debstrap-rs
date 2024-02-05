@@ -227,31 +227,6 @@ pub async fn download_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Default, Clone)]
-pub struct TargetPackage {
-    pub name: String,
-    pub version: String,
-    pub architecture: String,
-    pub description: String,
-    pub file_size: f64,
-    pub file_name: String,
-    pub uri: String,
-}
-
-pub fn package_set_contains(package_set: &Vec<TargetPackage>, package_name: &str) -> bool {
-    let mut is_package_present: bool = false;
-
-    for package in package_set {
-        if package.name == package_name {
-            is_package_present = true;
-        };
-    }
-
-    return is_package_present;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 pub fn extract_deb_control_field(
     extractor: &str,
     package: &str,

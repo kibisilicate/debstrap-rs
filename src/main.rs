@@ -2330,28 +2330,14 @@ fn main() -> ExitCode {
     //////////////////////////////////////////////
 
     if download_hooks.len() != 0 {
-        for shell_code in download_hooks {
-            print_message(
-                "debug",
-                &format!("running shell code: {{\n{shell_code}\n}}"),
-                &message_config,
-            );
-            if run_cmd!(
-                /usr/bin/env bash -c "
-export WORKSPACE='$workspace_directory'
-export PACKAGES='$downloaded_packages_directory'
-
-cd \"$$WORKSPACE\"
-
-$shell_code
-" 2> /dev/stdout
-            )
-            .is_err()
-                == true
-            {
-                print_message("warning", "hook returned an error.", &message_config);
-            };
-        }
+        run_hooks(
+            "download",
+            &download_hooks,
+            &workspace_directory,
+            Some(&all_packages_directory),
+            None,
+            &message_config,
+        );
     };
 
     //////////////////////////////////////////////
@@ -3811,30 +3797,14 @@ Components: {}
     //////////////////////////////////////////////
 
     if extract_hooks.len() != 0 {
-        for shell_code in extract_hooks {
-            print_message(
-                "debug",
-                &format!("running shell code: {{\n{shell_code}\n}}"),
-                &message_config,
-            );
-            if run_cmd!(
-                /usr/bin/env bash -c "
-export WORKSPACE='$workspace_directory'
-export TARGET='$target_bootstrap_directory'
-export INITIAL_PACKAGES='$initial_packages_directory'
-export REMAINING_PACKAGES='$remaining_packages_directory'
-
-cd \"$$WORKSPACE\"
-
-$shell_code
-" 2> /dev/stdout
-            )
-            .is_err()
-                == true
-            {
-                print_message("warning", "hook returned an error.", &message_config);
-            };
-        }
+        run_hooks(
+            "extract",
+            &extract_hooks,
+            &workspace_directory,
+            Some(&all_packages_directory),
+            Some(&target_bootstrap_directory),
+            &message_config,
+        );
     };
 
     //////////////////////////////////////////////
@@ -4129,30 +4099,14 @@ dpkg --force-depends --force-confold --install *.deb
     //////////////////////////////////////////////
 
     if essential_hooks.len() != 0 {
-        for shell_code in essential_hooks {
-            print_message(
-                "debug",
-                &format!("running shell code: {{\n{shell_code}\n}}"),
-                &message_config,
-            );
-            if run_cmd!(
-                /usr/bin/env bash -c "
-export WORKSPACE='$workspace_directory'
-export TARGET='$target_bootstrap_directory'
-export INITIAL_PACKAGES='$initial_packages_directory'
-export REMAINING_PACKAGES='$remaining_packages_directory'
-
-cd \"$$WORKSPACE\"
-
-$shell_code
-" 2> /dev/stdout
-            )
-            .is_err()
-                == true
-            {
-                print_message("warning", "hook returned an error.", &message_config);
-            };
-        }
+        run_hooks(
+            "essential",
+            &essential_hooks,
+            &workspace_directory,
+            Some(&all_packages_directory),
+            Some(&target_bootstrap_directory),
+            &message_config,
+        );
     };
 
     //////////////////////////////////////////////
@@ -4203,30 +4157,14 @@ dpkg --force-depends --force-confold --install *.deb
     //////////////////////////////////////////////
 
     if target_hooks.len() != 0 {
-        for shell_code in target_hooks {
-            print_message(
-                "debug",
-                &format!("running shell code: {{\n{shell_code}\n}}"),
-                &message_config,
-            );
-            if run_cmd!(
-                /usr/bin/env bash -c "
-export WORKSPACE='$workspace_directory'
-export TARGET='$target_bootstrap_directory'
-export INITIAL_PACKAGES='$initial_packages_directory'
-export REMAINING_PACKAGES='$remaining_packages_directory'
-
-cd \"$$WORKSPACE\"
-
-$shell_code
-" 2> /dev/stdout
-            )
-            .is_err()
-                == true
-            {
-                print_message("warning", "hook returned an error.", &message_config);
-            };
-        }
+        run_hooks(
+            "target",
+            &target_hooks,
+            &workspace_directory,
+            Some(&all_packages_directory),
+            Some(&target_bootstrap_directory),
+            &message_config,
+        );
     };
 
     //////////////////////////////////////////////
@@ -4415,28 +4353,14 @@ $shell_code
     //////////////////////////////////////////////
 
     if done_hooks.len() != 0 {
-        for shell_code in done_hooks {
-            print_message(
-                "debug",
-                &format!("running shell code: {{\n{shell_code}\n}}"),
-                &message_config,
-            );
-            if run_cmd!(
-                /usr/bin/env bash -c "
-export WORKSPACE='$workspace_directory'
-export TARGET='$target_bootstrap_directory'
-
-cd \"$$WORKSPACE\"
-
-$shell_code
-" 2> /dev/stdout
-            )
-            .is_err()
-                == true
-            {
-                print_message("warning", "hook returned an error.", &message_config);
-            };
-        }
+        run_hooks(
+            "done",
+            &done_hooks,
+            &workspace_directory,
+            None,
+            Some(&target_bootstrap_directory),
+            &message_config,
+        );
     };
 
     //////////////////////////////////////////////

@@ -84,8 +84,8 @@ pub fn resolve_dependencies(
 
                         break;
                     };
-                };
-            };
+                }
+            }
         };
 
         current_packages.sort_unstable();

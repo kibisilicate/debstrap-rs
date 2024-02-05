@@ -699,6 +699,101 @@ pub fn unmount_virtual_kernel_file_systems(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn run_hooks(
+    kind: &str,
+    hooks: &Vec<String>,
+    workspace_directory: &str,
+    chosen_packages_directory: Option<&str>,
+    chosen_target_directory: Option<&str>,
+    message_config: &MessageConfig,
+) {
+    let packages_directory: String;
+
+    match chosen_packages_directory {
+        Some(result) => packages_directory = String::from(result),
+        None => packages_directory = String::new(),
+    };
+
+    let target_directory: String;
+
+    match chosen_target_directory {
+        Some(result) => target_directory = String::from(result),
+        None => target_directory = String::new(),
+    };
+
+    for shell_code in hooks {
+        let mut did_hook_return_error: bool = false;
+
+        print_message(
+            "debug",
+            &format!("running shell code: {{\n{shell_code}\n}}"),
+            &message_config,
+        );
+
+        match kind as &str {
+            "download" => {
+                if run_cmd!(
+                    /usr/bin/env bash -c "
+export WORKSPACE='$workspace_directory'
+export PACKAGES='$packages_directory'
+
+cd \"$$WORKSPACE\"
+
+$shell_code
+" 2> /dev/stdout
+                )
+                .is_err()
+                    == true
+                {
+                    did_hook_return_error = true;
+                };
+            }
+            "extract" | "essential" | "target" => {
+                if run_cmd!(
+                    /usr/bin/env bash -c "
+export WORKSPACE='$workspace_directory'
+export PACKAGES='$packages_directory'
+export TARGET='$target_directory'
+
+cd \"$$WORKSPACE\"
+
+$shell_code
+" 2> /dev/stdout
+                )
+                .is_err()
+                    == true
+                {
+                    did_hook_return_error = true;
+                };
+            }
+            "done" => {
+                if run_cmd!(
+                    /usr/bin/env bash -c "
+export WORKSPACE='$workspace_directory'
+export TARGET='$target_directory'
+
+cd \"$$WORKSPACE\"
+
+$shell_code
+" 2> /dev/stdout
+                )
+                .is_err()
+                    == true
+                {
+                    did_hook_return_error = true;
+                };
+            }
+            _ => panic!("invalid hook type"),
+        };
+
+        if did_hook_return_error == true {
+            print_message("warning", "hook returned an error.", &message_config);
+        };
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn clean_up_on_exit(
     workspace_directory: &str,
     target_directory: Option<&str>,

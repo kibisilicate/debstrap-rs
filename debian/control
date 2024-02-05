@@ -1,7 +1,7 @@
 Source: debstrap
 Section: admin
 Priority: optional
-Maintainer: Steph Panagaea <>
+Maintainer: Stephany Panagaea <>
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13)
 Vcs-Git: https://github.com/kibisilicate/debstrap-rs.git

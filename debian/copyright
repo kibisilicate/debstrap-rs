@@ -2,7 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Source: https://github.com/kibisilicate/debstrap-rs
 
 Files: *
-Copyright: 2023 Steph Panagaea <>
+Copyright: 2023 Stephany Panagaea <>
 License: GPL-2.0
  This program is free software; you can redistribute it and/or modify it under
  the terms of the GNU General Public License version 2 as published by the Free

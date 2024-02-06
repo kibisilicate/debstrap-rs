@@ -1,6 +1,6 @@
 % DEBSTRAP(8) debstrap 0.0.1-experimental
-%
-% 26 November 2023
+% Stephany Panagaea
+% 06 February 2023
 
 # NAME
 debstrap - Bootstrap overly complicated Debian systems
@@ -348,19 +348,9 @@ Make sure to escape the dollar sign \'**\$**\' when using these variables so the
 \ \ \ \ \ \ \ All hooks export this variable.
 
 **PACKAGES**\
-\ \ \ \ \ \ \ The directory that the downloaded packages are stored in prior to separating essentials, extraction, and installation.
+\ \ \ \ \ \ \ The directory that all the downloaded packages are stored in.
 
-\ \ \ \ \ \ \ The hook \'**download**\' exports this variable.
-
-**INITIAL_PACKAGES**\
-\ \ \ \ \ \ \ The directory that all the essential packages are stored in prior to extraction, and installation.
-
-\ \ \ \ \ \ \ The hooks \'**extract**\', \'**essential**\', and \'**target**\' export this variable.
-
-**REMAINING_PACKAGES**\
-\ \ \ \ \ \ \ The directory that all the remaining packages are stored in prior to installation.
-
-\ \ \ \ \ \ \ The hooks \'**extract**\', \'**essential**\', and \'**target**\' export this variable.
+\ \ \ \ \ \ \ The hooks \'**download**\', \'**extract**\', \'**essential**\', and \'**target**\' export this variable.
 
 **TARGET**\
 \ \ \ \ \ \ \ The directory that the contents of the target is stored in.

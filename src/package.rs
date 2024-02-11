@@ -11,6 +11,9 @@ pub struct Package {
     pub version: String,
     pub section: String,
     pub priority: String,
+    pub uri: String,
+    pub suite: String,
+    pub component: String,
     pub architecture: String,
     pub depends: Vec<Vec<Relationship>>,
     pub pre_depends: Vec<Vec<Relationship>>,
@@ -81,12 +84,21 @@ fn parse_relationships(prefix: &str, input: &str) -> Vec<Vec<Relationship>> {
 }
 
 impl Package {
-    pub fn new(entry: &str) -> Self {
+    pub fn new(
+        package_entries: &str,
+        package_uri: &str,
+        package_suite: &str,
+        package_component: &str,
+        package_architecture: &str,
+    ) -> Self {
         let mut name: String = String::new();
         let mut version: String = String::new();
         let mut section: String = String::new();
         let mut priority: String = String::new();
-        let mut architecture: String = String::new();
+        let uri: String = String::from(package_uri);
+        let suite: String = String::from(package_suite);
+        let component: String = String::from(package_component);
+        let mut architecture: String = String::from(package_architecture);
         let mut depends: Vec<Vec<Relationship>> = Vec::new();
         let mut pre_depends: Vec<Vec<Relationship>> = Vec::new();
         let mut recommends: Vec<Vec<Relationship>> = Vec::new();
@@ -104,7 +116,7 @@ impl Package {
         let mut description: String = String::new();
         let mut homepage: String = String::new();
 
-        for line in entry.lines() {
+        for line in package_entries.lines() {
             match &line as &str {
                 _ if line.starts_with("Package: ") => {
                     name = line.replacen("Package: ", "", 1);
@@ -178,6 +190,9 @@ impl Package {
             version: version,
             section: section,
             priority: priority,
+            uri: uri,
+            suite: suite,
+            component: component,
             architecture: architecture,
             depends: depends,
             pre_depends: pre_depends,

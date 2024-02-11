@@ -1775,7 +1775,13 @@ fn main() -> ExitCode {
                 .map(|element| String::from(element))
                 .collect::<Vec<String>>()
             {
-                let package: Package = Package::new(&entry);
+                let package: Package = Package::new(
+                    &entry,
+                    &target_mirrors[0],
+                    &target_suites[0],
+                    &target_components[0],
+                    &target_architectures[0],
+                );
 
                 package_database.insert(package.name.clone(), package);
             }
@@ -2306,7 +2312,7 @@ fn main() -> ExitCode {
         match tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(download_file(
-                &format!("{}/{}", &target_mirrors[0], package.file_name),
+                &format!("{}/{}", package.uri, package.file_name),
                 &downloaded_packages_directory,
                 &message_config,
             )) {

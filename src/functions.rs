@@ -227,6 +227,95 @@ pub async fn download_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn download_package_lists(
+    input_uris: &Vec<(String, String)>,
+    input_suites: &Vec<String>,
+    input_components: &Vec<String>,
+    input_architectures: &Vec<String>,
+    output_directory: &str,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    for (scheme, path) in input_uris {
+        for suite in input_suites {
+            for component in input_components {
+                for architecture in input_architectures {
+                    let mut did_package_list_download: bool = false;
+
+                    let package_list_uri: String =
+                        format!("{scheme}{path}/dists/{suite}/{component}/binary-{architecture}");
+
+                    let potential_file_names: Vec<String> = Vec::from([
+                        String::from("Packages.xz"),
+                        String::from("Packages.gz"),
+                        String::from("Packages.bz2"),
+                        String::from("Packages"),
+                    ]);
+
+                    for file_name in potential_file_names {
+                        match tokio::runtime::Runtime::new()
+                            .unwrap()
+                            .block_on(download_file(
+                                &format!("{package_list_uri}/{file_name}"),
+                                &output_directory,
+                                &message_config,
+                            )) {
+                            Ok(..) => {
+                                did_package_list_download = true;
+
+                                if decompress_file(
+                                    &format!("{output_directory}/{file_name}"),
+                                    &message_config,
+                                )
+                                .is_err()
+                                    == true
+                                {
+                                    return Err(());
+                                };
+
+                                let package_list_file_name: String = format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages").replace("/", "_");
+
+                                if std::fs::rename(
+                                    format!("{output_directory}/Packages"),
+                                    format!("{output_directory}/{package_list_file_name}"),
+                                )
+                                .is_err()
+                                    == true
+                                {
+                                    print_message(
+                                        "error",
+                                        &format!("failed to rename file \"Packages\""),
+                                        &message_config,
+                                    );
+
+                                    return Err(());
+                                };
+
+                                break;
+                            }
+                            Err(message) => {
+                                print_message(
+                                    "debug",
+                                    &format!("{message}, skipping."),
+                                    &message_config,
+                                );
+                            }
+                        };
+                    }
+
+                    if did_package_list_download == false {
+                        print_message("error", "failed to download package list.", &message_config);
+                        return Err(());
+                    };
+                }
+            }
+        }
+    }
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn extract_deb_control_field(
     extractor: &str,
     package: &str,

@@ -1719,54 +1719,22 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    println!("Fetching package list ...");
+    println!("Fetching package list(s) ...");
 
-    let mut did_package_list_download: bool = false;
+    let package_lists_directory: String = format!("{workspace_directory}/lists");
 
-    let package_list_uri: String = format!(
-        "{}{}/dists/{}/{}/binary-{}",
-        &target_uris[0].0, &target_uris[0].1, &target_suites[0], &target_components[0], &target_architectures[0],
+    print_message(
+        "debug",
+        &format!("creating directory \"{package_lists_directory}\""),
+        &message_config,
     );
 
-    for file_name in ["Packages.xz", "Packages.gz", "Packages.bz2", "Packages"] {
-        match tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(download_file(
-                &format!("{package_list_uri}/{file_name}"),
-                &workspace_directory,
-                &message_config,
-            )) {
-            Ok(..) => {
-                did_package_list_download = true;
-
-                if decompress_file(
-                    &format!("{workspace_directory}/{file_name}"),
-                    &message_config,
-                )
-                .is_err()
-                    == true
-                {
-                    clean_up_on_exit(
-                        &workspace_directory,
-                        None,
-                        &target_actions_to_skip,
-                        &message_config,
-                    )
-                    .unwrap_or(());
-
-                    return ExitCode::from(1);
-                };
-
-                break;
-            }
-            Err(message) => {
-                print_message("debug", &format!("{message}, skipping."), &message_config);
-            }
-        };
-    }
-
-    if did_package_list_download == false {
-        print_message("error", "failed to download package list.", &message_config);
+    if std::fs::create_dir(&package_lists_directory).is_err() == true {
+        print_message(
+            "error",
+            &format!("failed to create directory \"{package_lists_directory}\""),
+            &message_config,
+        );
 
         clean_up_on_exit(
             &workspace_directory,
@@ -1779,11 +1747,43 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     };
 
+    if download_package_lists(
+        &target_uris,
+        &target_suites,
+        &target_components,
+        &target_architectures,
+        &package_lists_directory,
+        &message_config,
+    )
+    .is_err()
+        == true
+    {
+        clean_up_on_exit(
+            &workspace_directory,
+            None,
+            &target_actions_to_skip,
+            &message_config,
+        )
+        .unwrap_or(());
+
+        return ExitCode::from(1);
+    };
+
+    println!("Done.");
+
     //////////////////////////////////////////////
+
+    // XXX This is temporary for now.
+
+    let primary_package_list: String = format!(
+        "{}/dists/{}/{}/binary-{}_Packages",
+        &target_uris[0].1, &target_suites[0], &target_components[0], &target_architectures[0],
+    )
+    .replace("/", "_");
 
     let mut package_database: HashMap<String, Package> = HashMap::new();
 
-    match std::fs::read_to_string(format!("{workspace_directory}/Packages")) {
+    match std::fs::read_to_string(format!("{package_lists_directory}/{primary_package_list}")) {
         Ok(result) => {
             for entry in result
                 .trim()
@@ -1966,7 +1966,7 @@ fn main() -> ExitCode {
 
     match &target_resolver as &str {
         "internal" => {
-            println!("Calculating dependencies ...");
+            print_message("debug", "calculating dependencies", &message_config);
 
             match resolve_dependencies(
                 &package_database,

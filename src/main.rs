@@ -276,7 +276,7 @@ fn main() -> ExitCode {
     let mut chosen_packages_to_include: Vec<String> = Vec::new();
     let mut chosen_packages_to_exclude: Vec<String> = Vec::new();
     let mut chosen_packages_to_prohibit: Vec<String> = Vec::new();
-    let mut chosen_mirrors: Vec<String> = Vec::new();
+    let mut chosen_uris: Vec<String> = Vec::new();
     let mut chosen_resolver: String = String::new();
     let mut consider_recommends: Option<bool> = None;
     let mut chosen_extractor: String = String::new();
@@ -385,13 +385,13 @@ fn main() -> ExitCode {
                 chosen_packages_to_prohibit.extend(parse_list_of_values("--prohibit=", &argument));
             }
             _ if argument.starts_with("-m=") => {
-                chosen_mirrors.extend(parse_list_of_values("-m=", &argument));
+                chosen_uris.extend(parse_list_of_values("-m=", &argument));
             }
             _ if argument.starts_with("--mirror=") => {
-                chosen_mirrors.extend(parse_list_of_values("--mirror=", &argument));
+                chosen_uris.extend(parse_list_of_values("--mirror=", &argument));
             }
             _ if argument.starts_with("--mirrors=") => {
-                chosen_mirrors.extend(parse_list_of_values("--mirrors=", &argument));
+                chosen_uris.extend(parse_list_of_values("--mirrors=", &argument));
             }
             _ if argument.starts_with("-R=") => {
                 chosen_resolver = String::from(argument.replacen("-R=", "", 1).trim());
@@ -1206,20 +1206,26 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    if chosen_mirrors.len() == 0 {
+    if chosen_uris.len() == 0 {
         for uri in default_mirrors(&target_suites[0], &target_architectures[0]) {
-            chosen_mirrors.push(uri);
+            chosen_uris.push(uri);
         }
     };
 
-    let mut target_mirrors: Vec<String> = Vec::new();
+    let mut target_uris: Vec<(String, String)> = Vec::new();
 
-    for uri in chosen_mirrors {
-        let mut mirror: String;
+    for uri in chosen_uris {
+        let uri_scheme: String;
+        let mut uri_path: String;
 
         match uri {
-            _ if uri.starts_with("http://") || uri.starts_with("https://") => {
-                mirror = uri;
+            _ if uri.starts_with("http://") => {
+                uri_scheme = String::from("http://");
+                uri_path = uri.replacen("http://", "", 1);
+            }
+            _ if uri.starts_with("https://") => {
+                uri_scheme = String::from("https://");
+                uri_path = uri.replacen("https://", "", 1);
             }
             _ => {
                 print_message("error", &format!("invalid URI: \"{uri}\""), &message_config);
@@ -1227,30 +1233,40 @@ fn main() -> ExitCode {
             }
         };
 
-        while mirror.contains("//") == true {
-            mirror = mirror.replace("//", "/");
+        while uri_path.contains("//") == true {
+            uri_path = uri_path.replace("//", "/");
         }
 
-        mirror = mirror.replacen(":/", "://", 1);
-
-        if mirror.ends_with("/") == true {
-            mirror = String::from(mirror.strip_suffix("/").unwrap());
+        if uri_path.starts_with("/") == true {
+            uri_path = String::from(uri_path.strip_prefix("/").unwrap());
         };
 
-        target_mirrors.push(mirror);
+        if uri_path.ends_with("/") == true {
+            uri_path = String::from(uri_path.strip_suffix("/").unwrap());
+        };
+
+        target_uris.push((uri_scheme, uri_path));
     }
 
-    let target_mirrors: Vec<String> = target_mirrors;
+    let target_uris: Vec<(String, String)> = target_uris;
 
-    print_message(
-        "debug",
-        &format!(
-            "{} {:?}",
-            space_and_truncate_string("target mirror(s):", 41),
-            &target_mirrors
-        ),
-        &message_config,
-    );
+    if print_debug == true {
+        let mut uris_to_print: Vec<String> = Vec::new();
+
+        for (scheme, path) in &target_uris {
+            uris_to_print.push(format!("{scheme}{path}"));
+        };
+
+        print_message(
+            "debug",
+            &format!(
+                "{} {:?}",
+                space_and_truncate_string("target mirror(s):", 41),
+                &uris_to_print,
+            ),
+            &message_config,
+        );
+    };
 
     //////////////////////////////////////////////
 
@@ -1708,8 +1724,8 @@ fn main() -> ExitCode {
     let mut did_package_list_download: bool = false;
 
     let package_list_uri: String = format!(
-        "{}/dists/{}/{}/binary-{}",
-        &target_mirrors[0], &target_suites[0], &target_components[0], &target_architectures[0],
+        "{}{}/dists/{}/{}/binary-{}",
+        &target_uris[0].0, &target_uris[0].1, &target_suites[0], &target_components[0], &target_architectures[0],
     );
 
     for file_name in ["Packages.xz", "Packages.gz", "Packages.bz2", "Packages"] {
@@ -1777,7 +1793,7 @@ fn main() -> ExitCode {
             {
                 let package: Package = Package::new(
                     &entry,
-                    &target_mirrors[0],
+                    &format!("{}{}", &target_uris[0].0, &target_uris[0].1),
                     &target_suites[0],
                     &target_components[0],
                     &target_architectures[0],
@@ -3565,6 +3581,12 @@ fn main() -> ExitCode {
     //////////////////////////////////////////////
 
     if target_package_set.contains(package_database.get("apt").unwrap()) == true {
+        let mut uris_to_print: Vec<String> = Vec::new();
+
+        for (scheme, path) in &target_uris {
+            uris_to_print.push(format!("{scheme}{path}"));
+        };
+
         match &sources_list_format as &str {
             "deb822-style" => {
                 if Path::new(&format!(
@@ -3618,7 +3640,7 @@ URIs: {}
 Suites: {}
 Components: {}
 ",
-                        format!("{:?}", &target_mirrors).replace(['[', ']', '"', ','], ""),
+                        format!("{:?}", &uris_to_print).replace(['[', ']', '"', ','], ""),
                         format!("{:?}", &target_suites).replace(['[', ']', '"', ','], ""),
                         format!("{:?}", &target_components).replace(['[', ']', '"', ','], ""),
                     ),
@@ -3666,7 +3688,7 @@ Components: {}
 
                 let mut mirror_counter: u16 = 0;
 
-                for mirror in &target_mirrors {
+                for mirror in &uris_to_print {
                     mirror_counter += 1;
 
                     if mirror_counter != 1 {

@@ -1255,7 +1255,7 @@ fn main() -> ExitCode {
 
         for (scheme, path) in &target_uris {
             uris_to_print.push(format!("{scheme}{path}"));
-        };
+        }
 
         print_message(
             "debug",
@@ -1773,39 +1773,73 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    // XXX This is temporary for now.
+    let mut package_database: HashMap<String, Vec<Package>> = HashMap::new();
 
-    let primary_package_list: String = format!(
-        "{}/dists/{}/{}/binary-{}_Packages",
-        &target_uris[0].1, &target_suites[0], &target_components[0], &target_architectures[0],
-    )
-    .replace("/", "_");
+    for (scheme, path) in &target_uris {
+        for suite in &target_suites {
+            for component in &target_components {
+                for architecture in &target_architectures {
+                    let package_list_file_name: String =
+                        format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages")
+                            .replace("/", "_");
 
-    let mut package_database: HashMap<String, Package> = HashMap::new();
+                    match std::fs::read_to_string(format!(
+                        "{package_lists_directory}/{package_list_file_name}"
+                    )) {
+                        Ok(result) => {
+                            for entry in result
+                                .trim()
+                                .split("\n\n")
+                                .map(|element| String::from(element))
+                                .collect::<Vec<String>>()
+                            {
+                                let package: Package = Package::new(
+                                    &entry,
+                                    &scheme,
+                                    &path,
+                                    &suite,
+                                    &component,
+                                    &architecture,
+                                );
 
-    match std::fs::read_to_string(format!("{package_lists_directory}/{primary_package_list}")) {
-        Ok(result) => {
-            for entry in result
-                .trim()
-                .split("\n\n")
-                .map(|element| String::from(element))
-                .collect::<Vec<String>>()
-            {
-                let package: Package = Package::new(
-                    &entry,
-                    &format!("{}{}", &target_uris[0].0, &target_uris[0].1),
-                    &target_suites[0],
-                    &target_components[0],
-                    &target_architectures[0],
-                );
+                                let package_name: String = package.name.clone();
 
-                package_database.insert(package.name.clone(), package);
+                                match package_database.get_mut(&package_name) {
+                                    Some(result) => {
+                                        result.push(package);
+                                    }
+                                    None => {
+                                        package_database.insert(package_name, Vec::from([package]));
+                                    }
+                                };
+                            }
+                        }
+                        Err(..) => {
+                            print_message(
+                                "error",
+                                &format!(
+                                    "failed to read package list: \"{package_list_file_name}\""
+                                ),
+                                &message_config,
+                            );
+
+                            clean_up_on_exit(
+                                &workspace_directory,
+                                None,
+                                &target_actions_to_skip,
+                                &message_config,
+                            )
+                            .unwrap_or(());
+
+                            return ExitCode::from(1);
+                        }
+                    };
+                }
             }
         }
-        Err(..) => {}
-    };
+    }
 
-    let package_database: HashMap<String, Package> = package_database;
+    let package_database: HashMap<String, Vec<Package>> = package_database;
 
     //////////////////////////////////////////////
 
@@ -1814,8 +1848,8 @@ fn main() -> ExitCode {
     match &target_variant as &str {
         "essential" => {
             for package in package_database.values() {
-                if package.is_essential == true {
-                    initial_package_set.push(package.name.clone());
+                if package[0].is_essential == true {
+                    initial_package_set.push(package[0].name.clone());
                 };
             }
 
@@ -1823,8 +1857,8 @@ fn main() -> ExitCode {
         }
         "required" => {
             for package in package_database.values() {
-                if package.is_essential == true || package.priority == "required" {
-                    initial_package_set.push(package.name.clone());
+                if package[0].is_essential == true || package[0].priority == "required" {
+                    initial_package_set.push(package[0].name.clone());
                 };
             }
 
@@ -1832,11 +1866,11 @@ fn main() -> ExitCode {
         }
         "buildd" => {
             for package in package_database.values() {
-                if package.is_essential == true
-                    || package.priority == "required"
-                    || package.is_build_essential == true
+                if package[0].is_essential == true
+                    || package[0].priority == "required"
+                    || package[0].is_build_essential == true
                 {
-                    initial_package_set.push(package.name.clone());
+                    initial_package_set.push(package[0].name.clone());
                 };
             }
 
@@ -1844,22 +1878,22 @@ fn main() -> ExitCode {
         }
         "important" => {
             for package in package_database.values() {
-                if package.is_essential == true
-                    || package.priority == "required"
-                    || package.priority == "important"
+                if package[0].is_essential == true
+                    || package[0].priority == "required"
+                    || package[0].priority == "important"
                 {
-                    initial_package_set.push(package.name.clone());
+                    initial_package_set.push(package[0].name.clone());
                 };
             }
         }
         "standard" => {
             for package in package_database.values() {
-                if package.is_essential == true
-                    || package.priority == "required"
-                    || package.priority == "important"
-                    || package.priority == "standard"
+                if package[0].is_essential == true
+                    || package[0].priority == "required"
+                    || package[0].priority == "important"
+                    || package[0].priority == "standard"
                 {
-                    initial_package_set.push(package.name.clone());
+                    initial_package_set.push(package[0].name.clone());
                 };
             }
         }
@@ -1994,7 +2028,7 @@ fn main() -> ExitCode {
             for initial in &initial_package_set {
                 match package_database.get(initial) {
                     Some(result) => {
-                        target_package_set.push(result.clone());
+                        target_package_set.push(result[0].clone());
                     }
                     None => {
                         print_message(
@@ -2328,7 +2362,10 @@ fn main() -> ExitCode {
         match tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(download_file(
-                &format!("{}/{}", package.uri, package.file_name),
+                &format!(
+                    "{}{}/{}",
+                    package.uri_scheme, package.uri_path, package.file_name
+                ),
                 &downloaded_packages_directory,
                 &message_config,
             )) {
@@ -3254,7 +3291,11 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    if target_package_set.contains(package_database.get("dash").unwrap()) == false {
+    if target_package_set
+        .iter()
+        .any(|package| package.name == "dash")
+        == false
+    {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/bin/bash\" to \"{target_bootstrap_directory}/bin/sh\""),
@@ -3302,7 +3343,11 @@ fn main() -> ExitCode {
         };
     };
 
-    if target_package_set.contains(package_database.get("mawk").unwrap()) == true {
+    if target_package_set
+        .iter()
+        .any(|package| package.name == "mawk")
+        == true
+    {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/mawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
@@ -3325,7 +3370,11 @@ fn main() -> ExitCode {
 
             return ExitCode::from(1);
         };
-    } else if target_package_set.contains(package_database.get("original-awk").unwrap()) == true {
+    } else if target_package_set
+        .iter()
+        .any(|package| package.name == "original-awk")
+        == true
+    {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/original-awk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
@@ -3348,7 +3397,11 @@ fn main() -> ExitCode {
 
             return ExitCode::from(1);
         };
-    } else if target_package_set.contains(package_database.get("gawk").unwrap()) == true {
+    } else if target_package_set
+        .iter()
+        .any(|package| package.name == "gawk")
+        == true
+    {
         print_message(
             "debug",
             &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/gawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
@@ -3580,12 +3633,16 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    if target_package_set.contains(package_database.get("apt").unwrap()) == true {
+    if target_package_set
+        .iter()
+        .any(|package| package.name == "apt")
+        == true
+    {
         let mut uris_to_print: Vec<String> = Vec::new();
 
         for (scheme, path) in &target_uris {
             uris_to_print.push(format!("{scheme}{path}"));
-        };
+        }
 
         match &sources_list_format as &str {
             "deb822-style" => {
@@ -4048,7 +4105,11 @@ Components: {}
         return ExitCode::from(1);
     };
 
-    if target_package_set.contains(package_database.get("dash").unwrap()) == false {
+    if target_package_set
+        .iter()
+        .any(|package| package.name == "dash")
+        == false
+    {
         if run_cmd!(
             chroot "$target_bootstrap_directory" /usr/bin/env --ignore-environment bash -c "
 export HOME='/root'

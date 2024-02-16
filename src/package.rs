@@ -11,7 +11,8 @@ pub struct Package {
     pub version: String,
     pub section: String,
     pub priority: String,
-    pub uri: String,
+    pub uri_scheme: String,
+    pub uri_path: String,
     pub suite: String,
     pub component: String,
     pub architecture: String,
@@ -86,7 +87,8 @@ fn parse_relationships(prefix: &str, input: &str) -> Vec<Vec<Relationship>> {
 impl Package {
     pub fn new(
         package_entries: &str,
-        package_uri: &str,
+        package_uri_scheme: &str,
+        package_uri_path: &str,
         package_suite: &str,
         package_component: &str,
         package_architecture: &str,
@@ -95,7 +97,8 @@ impl Package {
         let mut version: String = String::new();
         let mut section: String = String::new();
         let mut priority: String = String::new();
-        let uri: String = String::from(package_uri);
+        let uri_scheme: String = String::from(package_uri_scheme);
+        let uri_path: String = String::from(package_uri_path);
         let suite: String = String::from(package_suite);
         let component: String = String::from(package_component);
         let mut architecture: String = String::from(package_architecture);
@@ -190,7 +193,8 @@ impl Package {
             version: version,
             section: section,
             priority: priority,
-            uri: uri,
+            uri_scheme: uri_scheme,
+            uri_path: uri_path,
             suite: suite,
             component: component,
             architecture: architecture,

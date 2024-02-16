@@ -5,7 +5,7 @@ use crate::package::Package;
 use std::collections::HashMap;
 
 pub fn resolve_dependencies(
-    package_database: &HashMap<String, Package>,
+    package_database: &HashMap<String, Vec<Package>>,
     input_package_set: &Vec<String>,
     consider_recommends: &bool,
     packages_to_prohibit: &Vec<String>,
@@ -20,15 +20,15 @@ pub fn resolve_dependencies(
     let mut provides_list: Vec<Provider> = Vec::new();
 
     for package in package_database.values() {
-        if package.provides.len() != 0 {
+        if package[0].provides.len() != 0 {
             let mut provides: Vec<String> = Vec::new();
 
-            for provided in &package.provides {
+            for provided in &package[0].provides {
                 provides.push(provided[0].name.clone());
             }
 
             let provider: Provider = Provider {
-                name: package.name.clone(),
+                name: package[0].name.clone(),
                 provides: provides,
             };
 
@@ -48,7 +48,7 @@ pub fn resolve_dependencies(
     for input in input_package_set {
         match package_database.get(input) {
             Some(result) => {
-                current_packages.push(result.clone());
+                current_packages.push(result[0].clone());
             }
             None => {
                 print_message(
@@ -114,7 +114,7 @@ pub fn resolve_dependencies(
             for dependency in current.depends {
                 match package_database.get(&dependency[0].name) {
                     Some(result) => {
-                        dependency_packages.push(result.clone());
+                        dependency_packages.push(result[0].clone());
                     }
                     None => {
                         packages_not_found.push(dependency[0].name.clone());
@@ -125,7 +125,7 @@ pub fn resolve_dependencies(
             for dependency in current.pre_depends {
                 match package_database.get(&dependency[0].name) {
                     Some(result) => {
-                        dependency_packages.push(result.clone());
+                        dependency_packages.push(result[0].clone());
                     }
                     None => {
                         packages_not_found.push(dependency[0].name.clone());
@@ -137,7 +137,7 @@ pub fn resolve_dependencies(
                 for dependency in current.recommends {
                     match package_database.get(&dependency[0].name) {
                         Some(result) => {
-                            dependency_packages.push(result.clone());
+                            dependency_packages.push(result[0].clone());
                         }
                         None => {
                             packages_not_found.push(dependency[0].name.clone());
@@ -152,7 +152,7 @@ pub fn resolve_dependencies(
                 for provider in &provides_list {
                     if provider.provides.contains(&package) == true {
                         if accumulated_packages
-                            .contains(package_database.get(&provider.name).unwrap())
+                            .contains(&package_database.get(&provider.name).unwrap()[0])
                             == true
                         {
                             print_message(
@@ -175,11 +175,11 @@ pub fn resolve_dependencies(
                     for provider in &provides_list {
                         if provider.provides.contains(&package) == true {
                             if accumulated_packages
-                                .contains(package_database.get(&provider.name).unwrap())
+                                .contains(&package_database.get(&provider.name).unwrap()[0])
                                 == false
                             {
                                 dependency_packages
-                                    .push(package_database.get(&provider.name).unwrap().clone());
+                                    .push(package_database.get(&provider.name).unwrap()[0].clone());
 
                                 print_message(
                                     "debug",

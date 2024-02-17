@@ -9,10 +9,10 @@ description = "Bootstrap overly complicated Debian systems"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byte-unit = "5.1.2"
+byte-unit = "5.1.4"
 cmd_lib = "1.9.3"
 rand = "0.8.5"
-reqwest = { version = "0.11.23", features = ["blocking", "stream"] }
-termion = "2.0.3"
-tokio = { version = "1.35.1", features = ["full"] }
-which = "5.0.0"
+reqwest = { version = "0.11.24", features = ["blocking", "stream"] }
+termion = "3.0.0"
+tokio = { version = "1.36.0", features = ["full"] }
+which = "6.0.0"

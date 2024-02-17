@@ -235,10 +235,55 @@ pub fn download_package_lists(
     output_directory: &str,
     message_config: &MessageConfig,
 ) -> Result<(), ()> {
+    let total_amount_to_download: u64 = (&input_uris.len()
+        * &input_suites.len()
+        * &input_components.len()
+        * &input_architectures.len())
+        .try_into()
+        .unwrap();
+
+    let counter_spacing: u16;
+
+    match total_amount_to_download {
+        length if length < 10 => {
+            counter_spacing = 6;
+        }
+        length if length < 100 => {
+            counter_spacing = 8;
+        }
+        length if length < 1000 => {
+            counter_spacing = 10;
+        }
+        length if length < 10000 => {
+            counter_spacing = 12;
+        }
+        length if length < 100000 => {
+            counter_spacing = 14;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            return Err(());
+        }
+    };
+
+    let mut counter: u64 = 0;
+
     for (scheme, path) in input_uris {
         for suite in input_suites {
             for component in input_components {
                 for architecture in input_architectures {
+                    counter += 1;
+
+                    println!(
+                        "{} {}",
+                        space_and_truncate_string(
+                            &format!("({counter}/{}):", total_amount_to_download),
+                            counter_spacing,
+                        ),
+                        format!("{scheme}{path} {suite}/{component} {architecture} Packages"),
+                    );
+
                     let mut did_package_list_download: bool = false;
 
                     let package_list_uri: String =

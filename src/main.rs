@@ -1719,7 +1719,7 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    println!("Fetching package list(s) ...");
+    println!("Fetching package list(s):");
 
     let package_lists_directory: String = format!("{workspace_directory}/lists");
 
@@ -1768,8 +1768,6 @@ fn main() -> ExitCode {
 
         return ExitCode::from(1);
     };
-
-    println!("Done.");
 
     //////////////////////////////////////////////
 
@@ -2105,38 +2103,51 @@ fn main() -> ExitCode {
             &message_config,
         );
 
-        if clean_up_on_exit(
+        clean_up_on_exit(
             &workspace_directory,
             None,
             &target_actions_to_skip,
             &message_config,
         )
-        .is_err()
-            == true
-        {
-            return ExitCode::from(1);
-        };
+        .unwrap_or(());
 
-        return ExitCode::from(0);
+        return ExitCode::from(1);
     };
 
     //////////////////////////////////////////////
 
-    let mut counter_spacing: u16 = 0;
+    let counter_spacing: u16;
 
-    if target_package_set.len() < 10 {
-        counter_spacing = 2;
-    } else if target_package_set.len() < 100 {
-        counter_spacing = 3;
-    } else if target_package_set.len() < 1000 {
-        counter_spacing = 4;
-    } else if target_package_set.len() < 10000 {
-        counter_spacing = 5;
-    } else if target_package_set.len() < 100000 {
-        counter_spacing = 6;
+    match target_package_set.len() {
+        length if length < 10 => {
+            counter_spacing = 2;
+        }
+        length if length < 100 => {
+            counter_spacing = 3;
+        }
+        length if length < 1000 => {
+            counter_spacing = 4;
+        }
+        length if length < 10000 => {
+            counter_spacing = 5;
+        }
+        length if length < 100000 => {
+            counter_spacing = 6;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            clean_up_on_exit(
+                &workspace_directory,
+                None,
+                &target_actions_to_skip,
+                &message_config,
+            )
+            .unwrap_or(());
+
+            return ExitCode::from(1);
+        }
     };
-
-    let counter_spacing: u16 = counter_spacing;
 
     let mut blank_counter_spacing: String = String::from(" ");
 
@@ -2331,21 +2342,38 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     };
 
-    let mut counter_spacing: u16 = 0;
+    let counter_spacing: u16;
 
-    if target_package_set.len() < 10 {
-        counter_spacing = 6;
-    } else if target_package_set.len() < 100 {
-        counter_spacing = 8;
-    } else if target_package_set.len() < 1000 {
-        counter_spacing = 10;
-    } else if target_package_set.len() < 10000 {
-        counter_spacing = 12;
-    } else if target_package_set.len() < 100000 {
-        counter_spacing = 14;
+    match target_package_set.len() {
+        length if length < 10 => {
+            counter_spacing = 6;
+        }
+        length if length < 100 => {
+            counter_spacing = 8;
+        }
+        length if length < 1000 => {
+            counter_spacing = 10;
+        }
+        length if length < 10000 => {
+            counter_spacing = 12;
+        }
+        length if length < 100000 => {
+            counter_spacing = 14;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            clean_up_on_exit(
+                &workspace_directory,
+                None,
+                &target_actions_to_skip,
+                &message_config,
+            )
+            .unwrap_or(());
+
+            return ExitCode::from(1);
+        }
     };
-
-    let counter_spacing: u16 = counter_spacing;
 
     let mut counter: u64 = 0;
 
@@ -3006,21 +3034,38 @@ fn main() -> ExitCode {
 
     packages_to_extract.sort_unstable();
 
-    let mut counter_spacing: u16 = 0;
+    let counter_spacing: u16;
 
-    if packages_to_extract.len() < 10 {
-        counter_spacing = 6;
-    } else if packages_to_extract.len() < 100 {
-        counter_spacing = 8;
-    } else if packages_to_extract.len() < 1000 {
-        counter_spacing = 10;
-    } else if packages_to_extract.len() < 10000 {
-        counter_spacing = 12;
-    } else if packages_to_extract.len() < 100000 {
-        counter_spacing = 14;
+    match packages_to_extract.len() {
+        length if length < 10 => {
+            counter_spacing = 6;
+        }
+        length if length < 100 => {
+            counter_spacing = 8;
+        }
+        length if length < 1000 => {
+            counter_spacing = 10;
+        }
+        length if length < 10000 => {
+            counter_spacing = 12;
+        }
+        length if length < 100000 => {
+            counter_spacing = 14;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            clean_up_on_exit(
+                &workspace_directory,
+                Some(&target_bootstrap_directory),
+                &target_actions_to_skip,
+                &message_config,
+            )
+            .unwrap_or(());
+
+            return ExitCode::from(1);
+        }
     };
-
-    let counter_spacing: u16 = counter_spacing;
 
     let mut counter: u16 = 0;
 

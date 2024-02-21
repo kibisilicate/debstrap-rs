@@ -1,3 +1,6 @@
+use crate::package::Package;
+
+use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use std::error::Error;
 use std::io::Cursor;
@@ -176,6 +179,297 @@ pub fn decompress_file(
             }
         };
     };
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn print_packages_dynamically(
+    initial_package_set: &Vec<String>,
+    target_package_set: &Vec<Package>,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    let counter_spacing: u16;
+
+    match target_package_set.len() {
+        length if length < 10 => {
+            counter_spacing = 2;
+        }
+        length if length < 100 => {
+            counter_spacing = 3;
+        }
+        length if length < 1000 => {
+            counter_spacing = 4;
+        }
+        length if length < 10000 => {
+            counter_spacing = 5;
+        }
+        length if length < 100000 => {
+            counter_spacing = 6;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            return Err(());
+        }
+    };
+
+    let mut name_length: u16 = 0;
+    let mut version_length: u16 = 0;
+    let mut suite_and_component_length: u16 = 0;
+    let mut architecture_length: u16 = 0;
+    let mut description_length: u16 = 0;
+    let mut total_packages_file_size: u64 = 0;
+    let mut total_packages_installed_size: u64 = 0;
+
+    for package in target_package_set {
+        if package.name.len() as u16 > name_length {
+            name_length = package.name.len() as u16;
+        };
+
+        if package.version.len() as u16 > version_length {
+            version_length = package.version.len() as u16;
+        };
+
+        if (package.suite.len() as u16 + package.component.len() as u16)
+            > suite_and_component_length
+        {
+            suite_and_component_length =
+                package.suite.len() as u16 + package.component.len() as u16;
+        };
+
+        if package.architecture.len() as u16 > architecture_length {
+            architecture_length = package.architecture.len() as u16;
+        };
+
+        if package.description.len() as u16 > description_length {
+            description_length = package.description.len() as u16;
+        };
+
+        total_packages_file_size += package.file_size;
+
+        total_packages_installed_size += package.installed_size;
+    }
+
+    let min_name_length: u16 = 4;
+    let min_version_length: u16 = 7;
+    let min_suite_and_component_length: u16 = 15;
+    let min_architecture_length: u16 = 12;
+    let min_description_length: u16 = 11;
+
+    if name_length < min_name_length {
+        name_length = min_name_length;
+    };
+
+    if version_length < min_version_length {
+        version_length = min_version_length;
+    };
+
+    if suite_and_component_length < min_suite_and_component_length {
+        suite_and_component_length = min_suite_and_component_length;
+    };
+
+    if architecture_length < min_architecture_length {
+        architecture_length = min_architecture_length;
+    };
+
+    if description_length < min_description_length {
+        description_length = min_description_length;
+    };
+
+    //////////////////////////////////////////////
+
+    match termion::terminal_size() {
+        Ok(result) => {
+            let max_width = result.0 - 2;
+
+            let mut current_width: u16 = (&counter_spacing
+                + &name_length
+                + &version_length
+                + &suite_and_component_length
+                + &architecture_length
+                + &description_length
+                + 10
+                + 7)
+            .try_into()
+            .unwrap();
+
+            let mut increase_or_decrease: String = String::new();
+
+            if current_width < max_width {
+                increase_or_decrease = String::from("increase");
+            };
+
+            if current_width > max_width {
+                increase_or_decrease = String::from("decrease");
+            };
+
+            if increase_or_decrease.is_empty() == false {
+                let mut length_to_change: String = String::from("description");
+
+                loop {
+                    current_width = (&counter_spacing
+                        + &name_length
+                        + &version_length
+                        + &suite_and_component_length
+                        + &architecture_length
+                        + &description_length
+                        + 10
+                        + 7)
+                    .try_into()
+                    .unwrap();
+
+                    if current_width == max_width {
+                        break;
+                    } else {
+                        match &length_to_change as &str {
+                            "description" => {
+                                match &increase_or_decrease as &str {
+                                    "increase" => description_length += 1,
+                                    "decrease" => {
+                                        if description_length > min_description_length {
+                                            description_length -= 1;
+                                        };
+                                    }
+                                    _ => {}
+                                };
+                                length_to_change = String::from("architecture");
+                            }
+                            "architecture" => {
+                                match &increase_or_decrease as &str {
+                                    "increase" => architecture_length += 1,
+                                    "decrease" => {
+                                        if architecture_length > min_architecture_length {
+                                            architecture_length -= 1;
+                                        };
+                                    }
+                                    _ => {}
+                                };
+                                length_to_change = String::from("suite_and_component");
+                            }
+                            "suite_and_component" => {
+                                match &increase_or_decrease as &str {
+                                    "increase" => suite_and_component_length += 1,
+                                    "decrease" => {
+                                        if suite_and_component_length
+                                            > min_suite_and_component_length
+                                        {
+                                            suite_and_component_length -= 1;
+                                        };
+                                    }
+                                    _ => {}
+                                };
+                                length_to_change = String::from("version");
+                            }
+                            "version" => {
+                                match &increase_or_decrease as &str {
+                                    "increase" => version_length += 1,
+                                    "decrease" => {
+                                        if version_length > min_version_length {
+                                            version_length -= 1;
+                                        };
+                                    }
+                                    _ => {}
+                                };
+                                length_to_change = String::from("name");
+                            }
+                            "name" => {
+                                match &increase_or_decrease as &str {
+                                    "increase" => name_length += 1,
+                                    "decrease" => {
+                                        if name_length > min_name_length {
+                                            name_length -= 1;
+                                        };
+                                    }
+                                    _ => {}
+                                };
+                                length_to_change = String::from("description");
+                            }
+                            _ => {}
+                        };
+
+                        continue;
+                    };
+                }
+            };
+        }
+        Err(..) => {}
+    };
+
+    let mut bold_start: String = String::new();
+    let mut bold_end: String = String::new();
+
+    if message_config.color == true {
+        bold_start = String::from("\x1b[01m");
+        bold_end = String::from("\x1b[00m");
+    };
+
+    let mut blank_counter_spacing: String = String::from(" ");
+
+    for _value in 1..counter_spacing {
+        blank_counter_spacing.push(' ');
+    }
+
+    println!(
+        "\n{bold_start}{blank_counter_spacing} {} {} {} {} {} Size{bold_end}",
+        space_and_truncate_string("Name", name_length),
+        space_and_truncate_string("Version", version_length),
+        space_and_truncate_string("Suite/Component", suite_and_component_length),
+        space_and_truncate_string("Architecture", architecture_length),
+        space_and_truncate_string("Description", description_length),
+    );
+
+    let mut counter: u16 = 0;
+
+    for package in target_package_set {
+        counter += 1;
+
+        println!(
+            "{} {} {} {} {} {} {}",
+            space_and_truncate_string(&format!("{counter}."), counter_spacing),
+            space_and_truncate_string(&package.name, name_length),
+            space_and_truncate_string(&package.version, version_length),
+            space_and_truncate_string(
+                &format!("{}/{}", &package.suite, &package.component),
+                suite_and_component_length,
+            ),
+            space_and_truncate_string(&package.architecture, architecture_length),
+            space_and_truncate_string(&package.description, description_length),
+            format!(
+                "{:.2}",
+                &Byte::from_f64_with_unit(*&package.file_size as f64, Unit::B)
+                    .unwrap()
+                    .get_appropriate_unit(UnitType::Binary),
+            ),
+        );
+    }
+
+    let amount_of_dependencies: u16 =
+        target_package_set.len() as u16 - initial_package_set.len() as u16;
+
+    println!(
+        "\n{} initially, {} dependencies, {} packages total.",
+        initial_package_set.len(),
+        amount_of_dependencies,
+        target_package_set.len(),
+    );
+
+    println!(
+        "Total download size: {}\nTotal installed size: {}",
+        format!(
+            "{:.2}",
+            &Byte::from_u64_with_unit(total_packages_file_size, Unit::B)
+                .unwrap()
+                .get_appropriate_unit(UnitType::Binary),
+        ),
+        format!(
+            "{:.2}",
+            &Byte::from_u64_with_unit(total_packages_installed_size, Unit::KiB)
+                .unwrap()
+                .get_appropriate_unit(UnitType::Binary),
+        ),
+    );
 
     return Ok(());
 }

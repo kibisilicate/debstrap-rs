@@ -7,7 +7,6 @@ pub mod package;
 use releases::*;
 pub mod releases;
 
-use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -2081,28 +2080,10 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    let mut dependency_package_set: Vec<String> = Vec::new();
-
-    if target_package_set.len() != initial_package_set.len() {
-        for package in &target_package_set {
-            if initial_package_set.contains(&package.name) == false {
-                dependency_package_set.push(package.name.clone());
-            };
-        }
-    };
-
-    dependency_package_set.sort_unstable();
-    dependency_package_set.dedup();
-
-    let dependency_package_set: Vec<String> = dependency_package_set;
-
-    if initial_package_set.len() + dependency_package_set.len() != target_package_set.len() {
-        print_message(
-            "error",
-            "failed to calculate dependencies.",
-            &message_config,
-        );
-
+    if print_packages_dynamically(&initial_package_set, &target_package_set, &message_config)
+        .is_err()
+        == true
+    {
         clean_up_on_exit(
             &workspace_directory,
             None,
@@ -2113,108 +2094,6 @@ fn main() -> ExitCode {
 
         return ExitCode::from(1);
     };
-
-    //////////////////////////////////////////////
-
-    let counter_spacing: u16;
-
-    match target_package_set.len() {
-        length if length < 10 => {
-            counter_spacing = 2;
-        }
-        length if length < 100 => {
-            counter_spacing = 3;
-        }
-        length if length < 1000 => {
-            counter_spacing = 4;
-        }
-        length if length < 10000 => {
-            counter_spacing = 5;
-        }
-        length if length < 100000 => {
-            counter_spacing = 6;
-        }
-        _ => {
-            print_message("error", "invalid size.", &message_config);
-
-            clean_up_on_exit(
-                &workspace_directory,
-                None,
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
-
-            return ExitCode::from(1);
-        }
-    };
-
-    let mut blank_counter_spacing: String = String::from(" ");
-
-    for _value in 1..counter_spacing {
-        blank_counter_spacing.push(' ');
-    }
-
-    let name_length: u16 = 40;
-    let version_length: u16 = 30;
-    let architecture_length: u16 = 12;
-    let description_length: u16 = 72;
-
-    let message_header: String = format!(
-        "{blank_counter_spacing} {} {} {} {} Size",
-        space_and_truncate_string("Name", name_length),
-        space_and_truncate_string("Version", version_length),
-        space_and_truncate_string("Architecture", architecture_length),
-        space_and_truncate_string("Description", description_length),
-    );
-
-    if message_config.color == true {
-        println!("\n\x1b[01m{message_header}\x1b[00m");
-    } else {
-        println!("\n{message_header}");
-    };
-
-    let mut counter: u16 = 0;
-
-    for package in &target_package_set {
-        counter += 1;
-
-        let package_counter: String =
-            space_and_truncate_string(&format!("{counter}."), counter_spacing);
-        let package_name: String = space_and_truncate_string(&package.name, name_length);
-        let package_version: String = space_and_truncate_string(&package.version, version_length);
-        let package_architecture: String =
-            space_and_truncate_string(&package.architecture, architecture_length);
-        let package_description: String =
-            space_and_truncate_string(&package.description, description_length);
-        let package_size: String = format!(
-            "{:.3}",
-            &Byte::from_f64_with_unit(*&package.file_size as f64, Unit::KiB)
-                .unwrap()
-                .get_appropriate_unit(UnitType::Binary),
-        );
-
-        let line_to_print: String = format!(
-            "{} {} {} {} {} {}",
-            package_counter,
-            package_name,
-            package_version,
-            package_architecture,
-            package_description,
-            package_size,
-        );
-
-        println!("{line_to_print}");
-    }
-
-    //////////////////////////////////////////////
-
-    println!(
-        "\n{} initially, {} dependencies, {} packages total.",
-        initial_package_set.len(),
-        dependency_package_set.len(),
-        target_package_set.len(),
-    );
 
     //////////////////////////////////////////////
 

@@ -27,8 +27,9 @@ pub struct Package {
     pub replaces: Vec<Vec<Relationship>>,
     pub is_essential: bool,
     pub is_build_essential: bool,
-    pub file_size: u32,
     pub file_name: String,
+    pub file_size: u64,
+    pub installed_size: u64,
     pub maintainer: String,
     pub description: String,
     pub homepage: String,
@@ -113,8 +114,9 @@ impl Package {
         let mut replaces: Vec<Vec<Relationship>> = Vec::new();
         let mut is_essential: bool = false;
         let mut is_build_essential: bool = false;
-        let mut file_size: u32 = 0;
         let mut file_name: String = String::new();
+        let mut file_size: u64 = 0;
+        let mut installed_size: u64 = 0;
         let mut maintainer: String = String::new();
         let mut description: String = String::new();
         let mut homepage: String = String::new();
@@ -169,17 +171,20 @@ impl Package {
                 "Build-Essential: yes" => {
                     is_build_essential = true;
                 }
+                _ if line.starts_with("Filename: ") => {
+                    file_name = line.replacen("Filename: ", "", 1);
+                }
                 _ if line.starts_with("Size: ") => {
                     file_size = line.replacen("Size: ", "", 1).parse().unwrap();
                 }
-                _ if line.starts_with("Filename: ") => {
-                    file_name = line.replacen("Filename: ", "", 1);
+                _ if line.starts_with("Installed-Size: ") => {
+                    installed_size = line.replacen("Installed-Size: ", "", 1).parse().unwrap();
                 }
                 _ if line.starts_with("Maintainer: ") => {
                     maintainer = line.replacen("Maintainer: ", "", 1);
                 }
                 _ if line.starts_with("Description: ") => {
-                    description = line.replacen("Description: ", "", 1);
+                    description = line.replacen("Description: ", "", 1).replace("—", "-");
                 }
                 _ if line.starts_with("Homepage: ") => {
                     homepage = line.replacen("Homepage: ", "", 1);
@@ -209,8 +214,9 @@ impl Package {
             replaces: replaces,
             is_essential: is_essential,
             is_build_essential: is_build_essential,
-            file_size: file_size,
             file_name: file_name,
+            file_size: file_size,
+            installed_size: installed_size,
             maintainer: maintainer,
             description: description,
             homepage: homepage,

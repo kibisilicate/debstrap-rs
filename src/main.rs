@@ -2221,77 +2221,24 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     };
 
-    let counter_spacing: u16;
+    if download_packages(
+        &target_package_set,
+        &downloaded_packages_directory,
+        &message_config,
+    )
+    .is_err()
+        == true
+    {
+        clean_up_on_exit(
+            &workspace_directory,
+            None,
+            &target_actions_to_skip,
+            &message_config,
+        )
+        .unwrap_or(());
 
-    match target_package_set.len() {
-        length if length < 10 => {
-            counter_spacing = 6;
-        }
-        length if length < 100 => {
-            counter_spacing = 8;
-        }
-        length if length < 1000 => {
-            counter_spacing = 10;
-        }
-        length if length < 10000 => {
-            counter_spacing = 12;
-        }
-        length if length < 100000 => {
-            counter_spacing = 14;
-        }
-        _ => {
-            print_message("error", "invalid size.", &message_config);
-
-            clean_up_on_exit(
-                &workspace_directory,
-                None,
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
-
-            return ExitCode::from(1);
-        }
+        return ExitCode::from(1);
     };
-
-    let mut counter: u64 = 0;
-
-    for package in &target_package_set {
-        counter += 1;
-
-        let download_counter: String = space_and_truncate_string(
-            &format!("({counter}/{}):", target_package_set.len(),),
-            counter_spacing,
-        );
-
-        println!("{download_counter} {}", package.name);
-
-        match tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(download_file(
-                &format!(
-                    "{}{}/{}",
-                    package.uri_scheme, package.uri_path, package.file_name
-                ),
-                &downloaded_packages_directory,
-                &message_config,
-            )) {
-            Ok(..) => {}
-            Err(message) => {
-                print_message("error", &message, &message_config);
-
-                clean_up_on_exit(
-                    &workspace_directory,
-                    None,
-                    &target_actions_to_skip,
-                    &message_config,
-                )
-                .unwrap_or(());
-
-                return ExitCode::from(1);
-            }
-        };
-    }
 
     //////////////////////////////////////////////
 

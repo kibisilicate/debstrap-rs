@@ -655,6 +655,121 @@ pub fn download_package_lists(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn download_packages(
+    target_package_set: &Vec<Package>,
+    output_directory: &str,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    let counter_spacing: u16;
+
+    match target_package_set.len() {
+        length if length < 10 => {
+            counter_spacing = 6;
+        }
+        length if length < 100 => {
+            counter_spacing = 8;
+        }
+        length if length < 1000 => {
+            counter_spacing = 10;
+        }
+        length if length < 10000 => {
+            counter_spacing = 12;
+        }
+        length if length < 100000 => {
+            counter_spacing = 14;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            return Err(());
+        }
+    };
+
+    let mut full_uri_length: u16 = 0;
+    let mut suite_and_component_length: u16 = 0;
+    let mut name_length: u16 = 0;
+    let mut version_length: u16 = 0;
+    let mut architecture_length: u16 = 0;
+
+    for package in target_package_set {
+        if (package.uri_scheme.len() as u16 + package.uri_path.len() as u16) > full_uri_length {
+            full_uri_length = package.uri_scheme.len() as u16 + package.uri_path.len() as u16;
+        };
+
+        if (package.suite.len() as u16 + 1 + package.component.len() as u16)
+            > suite_and_component_length
+        {
+            suite_and_component_length =
+                package.suite.len() as u16 + 1 + package.component.len() as u16;
+        };
+
+        if package.name.len() as u16 > name_length {
+            name_length = package.name.len() as u16;
+        };
+
+        if package.version.len() as u16 > version_length {
+            version_length = package.version.len() as u16;
+        };
+
+        if package.architecture.len() as u16 > architecture_length {
+            architecture_length = package.architecture.len() as u16;
+        };
+    }
+
+    let mut counter: u64 = 0;
+
+    for package in target_package_set {
+        counter += 1;
+
+        println!(
+            "{} {} {} {} {} {} {}",
+            space_and_truncate_string(
+                &format!("({counter}/{}):", target_package_set.len()),
+                counter_spacing
+            ),
+            space_and_truncate_string(
+                &format!("{}{}", package.uri_scheme, package.uri_path),
+                full_uri_length
+            ),
+            space_and_truncate_string(
+                &format!("{}/{}", package.suite, package.component),
+                suite_and_component_length
+            ),
+            space_and_truncate_string(&package.name, name_length),
+            space_and_truncate_string(&package.version, version_length),
+            space_and_truncate_string(&package.architecture, architecture_length),
+            format!(
+                "{:.2}",
+                &Byte::from_f64_with_unit(package.file_size as f64, Unit::B)
+                    .unwrap()
+                    .get_appropriate_unit(UnitType::Binary),
+            ),
+        );
+
+        match tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(download_file(
+                &format!(
+                    "{}{}/{}",
+                    package.uri_scheme, package.uri_path, package.file_name
+                ),
+                &output_directory,
+                &message_config,
+            )) {
+            Ok(..) => {}
+            Err(message) => {
+                print_message("error", &message, &message_config);
+
+                return Err(());
+            }
+        };
+    }
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn extract_deb_control_field(
     extractor: &str,
     package: &str,

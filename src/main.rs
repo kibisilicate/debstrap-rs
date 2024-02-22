@@ -1840,38 +1840,37 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    let mut initial_package_set: Vec<String> = Vec::new();
+    let mut initial_package_set: Vec<Package> = Vec::new();
 
     match &target_variant as &str {
         "essential" => {
             for package in package_database.values() {
-                if package[0].is_essential == true {
-                    initial_package_set.push(package[0].name.clone());
+                if package[0].is_essential == true || package[0].name == "mawk" {
+                    initial_package_set.push(package[0].clone());
                 };
             }
-
-            initial_package_set.push(String::from("mawk"));
         }
         "required" => {
             for package in package_database.values() {
-                if package[0].is_essential == true || package[0].priority == "required" {
-                    initial_package_set.push(package[0].name.clone());
+                if package[0].is_essential == true
+                    || package[0].priority == "required"
+                    || package[0].name == "apt"
+                {
+                    initial_package_set.push(package[0].clone());
                 };
             }
-
-            initial_package_set.push(String::from("apt"));
         }
         "buildd" => {
             for package in package_database.values() {
                 if package[0].is_essential == true
                     || package[0].priority == "required"
                     || package[0].is_build_essential == true
+                    || package[0].name == "apt"
+                    || package[0].name == "build-essential"
                 {
-                    initial_package_set.push(package[0].name.clone());
+                    initial_package_set.push(package[0].clone());
                 };
             }
-
-            initial_package_set.extend([String::from("apt"), String::from("build-essential")]);
         }
         "important" => {
             for package in package_database.values() {
@@ -1879,7 +1878,7 @@ fn main() -> ExitCode {
                     || package[0].priority == "required"
                     || package[0].priority == "important"
                 {
-                    initial_package_set.push(package[0].name.clone());
+                    initial_package_set.push(package[0].clone());
                 };
             }
         }
@@ -1890,12 +1889,42 @@ fn main() -> ExitCode {
                     || package[0].priority == "important"
                     || package[0].priority == "standard"
                 {
-                    initial_package_set.push(package[0].name.clone());
+                    initial_package_set.push(package[0].clone());
                 };
             }
         }
         "custom" => {
-            initial_package_set = custom_package_set;
+            for custom in &custom_package_set {
+                let mut is_package_present: bool = false;
+
+                for package in package_database.values() {
+                    if package[0].name == *custom {
+                        initial_package_set.push(package[0].clone());
+
+                        is_package_present = true;
+
+                        break;
+                    };
+                }
+
+                if is_package_present == false {
+                    print_message(
+                        "error",
+                        &format!("failed to find package: \"{custom}\""),
+                        &message_config,
+                    );
+
+                    clean_up_on_exit(
+                        &workspace_directory,
+                        None,
+                        &target_actions_to_skip,
+                        &message_config,
+                    )
+                    .unwrap_or(());
+
+                    return ExitCode::from(1);
+                };
+            }
         }
         _ => {}
     };
@@ -1907,19 +1936,52 @@ fn main() -> ExitCode {
 
     if packages_to_include.len() != 0 {
         for included in &packages_to_include {
-            if initial_package_set.contains(included) == true {
+            if initial_package_set
+                .iter()
+                .any(|initial| &initial.name == included)
+                == true
+            {
                 print_message(
                     "debug",
                     &format!("package present: \"{included}\""),
                     &message_config,
                 );
             } else {
-                print_message(
-                    "debug",
-                    &format!("package added:   \"{included}\""),
-                    &message_config,
-                );
-                initial_package_set.push(String::from(included));
+                let mut is_package_present: bool = false;
+
+                for package in package_database.values() {
+                    if package[0].name == *included {
+                        initial_package_set.push(package[0].clone());
+
+                        print_message(
+                            "debug",
+                            &format!("package added:   \"{included}\""),
+                            &message_config,
+                        );
+
+                        is_package_present = true;
+
+                        break;
+                    };
+                }
+
+                if is_package_present == false {
+                    print_message(
+                        "error",
+                        &format!("failed to find package: \"{included}\""),
+                        &message_config,
+                    );
+
+                    clean_up_on_exit(
+                        &workspace_directory,
+                        None,
+                        &target_actions_to_skip,
+                        &message_config,
+                    )
+                    .unwrap_or(());
+
+                    return ExitCode::from(1);
+                };
             };
         }
 
@@ -1928,10 +1990,14 @@ fn main() -> ExitCode {
 
     if packages_to_exclude.len() != 0 {
         for excluded in &packages_to_exclude {
-            if initial_package_set.contains(excluded) == true {
-                for package in initial_package_set.iter_mut() {
-                    if &*package == excluded {
-                        *package = String::new();
+            if initial_package_set
+                .iter()
+                .any(|initial| &initial.name == excluded)
+                == true
+            {
+                for (index, initial) in initial_package_set.iter_mut().enumerate() {
+                    if initial.name == *excluded {
+                        initial_package_set.remove(index);
 
                         print_message(
                             "debug",
@@ -1952,13 +2018,9 @@ fn main() -> ExitCode {
         }
 
         initial_package_set.sort_unstable();
-
-        while initial_package_set.contains(&String::new()) == true {
-            initial_package_set.remove(0);
-        }
     };
 
-    let initial_package_set: Vec<String> = initial_package_set;
+    let initial_package_set: Vec<Package> = initial_package_set;
 
     //////////////////////////////////////////////
 
@@ -1966,7 +2028,7 @@ fn main() -> ExitCode {
         println!("");
 
         for package in &initial_package_set {
-            println!("{package}");
+            println!("{}", package.name);
         }
 
         println!(
@@ -2021,32 +2083,7 @@ fn main() -> ExitCode {
                 }
             };
         }
-        "none" => {
-            for initial in &initial_package_set {
-                match package_database.get(initial) {
-                    Some(result) => {
-                        target_package_set.push(result[0].clone());
-                    }
-                    None => {
-                        print_message(
-                            "error",
-                            &format!("failed to find package: \"{initial}\""),
-                            &message_config,
-                        );
-
-                        clean_up_on_exit(
-                            &workspace_directory,
-                            None,
-                            &target_actions_to_skip,
-                            &message_config,
-                        )
-                        .unwrap_or(());
-
-                        return ExitCode::from(1);
-                    }
-                };
-            }
-        }
+        "none" => target_package_set = initial_package_set.clone(),
         _ => {}
     };
 
@@ -2450,13 +2487,13 @@ fn main() -> ExitCode {
     if extract_only_essentials == true {
         println!("Preparing to extract essentials ...");
 
-        let mut initial_essential_subset: Vec<String> = Vec::new();
+        let mut initial_essential_subset: Vec<Package> = Vec::new();
 
         let mut is_awk_present: bool = false;
 
         for package in &target_package_set {
             if package.is_essential == true {
-                initial_essential_subset.push(package.name.clone());
+                initial_essential_subset.push(package.clone());
             };
 
             if is_awk_present == false {
@@ -2503,21 +2540,56 @@ fn main() -> ExitCode {
         packages_to_consider_essential.sort_unstable();
         packages_to_consider_essential.dedup();
 
+        //////////////////////////////////////////
+
         if packages_to_consider_essential.len() != 0 {
             for included in &packages_to_consider_essential {
-                if initial_essential_subset.contains(included) == true {
+                if initial_essential_subset
+                    .iter()
+                    .any(|initial| &initial.name == included)
+                    == true
+                {
                     print_message(
                         "debug",
                         &format!("essential package present: \"{included}\""),
                         &message_config,
                     );
                 } else {
-                    print_message(
-                        "debug",
-                        &format!("essential package added:   \"{included}\""),
-                        &message_config,
-                    );
-                    initial_essential_subset.push(String::from(included));
+                    let mut is_package_present: bool = false;
+
+                    for package in package_database.values() {
+                        if package[0].name == *included {
+                            initial_essential_subset.push(package[0].clone());
+
+                            print_message(
+                                "debug",
+                                &format!("essential package added:   \"{included}\""),
+                                &message_config,
+                            );
+
+                            is_package_present = true;
+
+                            break;
+                        };
+                    }
+
+                    if is_package_present == false {
+                        print_message(
+                            "error",
+                            &format!("failed to find package: \"{included}\""),
+                            &message_config,
+                        );
+
+                        clean_up_on_exit(
+                            &workspace_directory,
+                            None,
+                            &target_actions_to_skip,
+                            &message_config,
+                        )
+                        .unwrap_or(());
+
+                        return ExitCode::from(1);
+                    };
                 };
             }
 
@@ -2526,14 +2598,18 @@ fn main() -> ExitCode {
 
         if packages_to_consider_non_essential.len() != 0 {
             for excluded in &packages_to_consider_non_essential {
-                if initial_essential_subset.contains(excluded) == true {
-                    for package in initial_essential_subset.iter_mut() {
-                        if &*package == excluded {
-                            *package = String::new();
+                if initial_essential_subset
+                    .iter()
+                    .any(|initial| &initial.name == excluded)
+                    == true
+                {
+                    for (index, initial) in initial_essential_subset.iter_mut().enumerate() {
+                        if initial.name == *excluded {
+                            initial_essential_subset.remove(index);
 
                             print_message(
                                 "debug",
-                                &format!("package removed: \"{excluded}\""),
+                                &format!("essential package removed: \"{excluded}\""),
                                 &message_config,
                             );
 
@@ -2543,20 +2619,16 @@ fn main() -> ExitCode {
                 } else {
                     print_message(
                         "debug",
-                        &format!("package absent:  \"{excluded}\""),
+                        &format!("essential package absent:  \"{excluded}\""),
                         &message_config,
                     );
                 };
             }
 
             initial_essential_subset.sort_unstable();
-
-            while initial_essential_subset.contains(&String::new()) == true {
-                initial_essential_subset.remove(0);
-            }
         };
 
-        let initial_essential_subset: Vec<String> = initial_essential_subset;
+        let initial_essential_subset: Vec<Package> = initial_essential_subset;
 
         //////////////////////////////////////////
 
@@ -2585,6 +2657,8 @@ fn main() -> ExitCode {
                 return ExitCode::from(1);
             }
         };
+
+        //////////////////////////////////////////
 
         println!("Separating essentials from non-essentials ...");
 

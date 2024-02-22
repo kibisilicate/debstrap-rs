@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 pub fn resolve_dependencies(
     package_database: &HashMap<String, Vec<Package>>,
-    input_package_set: &Vec<String>,
+    input_package_set: &Vec<Package>,
     consider_recommends: &bool,
     packages_to_prohibit: &Vec<String>,
     message_config: &MessageConfig,
@@ -43,23 +43,7 @@ pub fn resolve_dependencies(
 
     //////////////////////////////////////////////
 
-    let mut current_packages: Vec<Package> = Vec::new();
-
-    for input in input_package_set {
-        match package_database.get(input) {
-            Some(result) => {
-                current_packages.push(result[0].clone());
-            }
-            None => {
-                print_message(
-                    "error",
-                    &format!("failed to find package: \"{input}\""),
-                    &message_config,
-                );
-                return Err(());
-            }
-        };
-    }
+    let mut current_packages: Vec<Package> = input_package_set.clone();
 
     let mut accumulated_packages: Vec<Package> = Vec::new();
 

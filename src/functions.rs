@@ -186,7 +186,7 @@ pub fn decompress_file(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub fn print_packages_dynamically(
-    initial_package_set: &Vec<String>,
+    initial_package_set: &Vec<Package>,
     target_package_set: &Vec<Package>,
     message_config: &MessageConfig,
 ) -> Result<(), ()> {

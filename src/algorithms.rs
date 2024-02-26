@@ -96,36 +96,60 @@ pub fn resolve_dependencies(
             let mut packages_not_found: Vec<String> = Vec::new();
 
             for dependency in current.depends {
-                match package_database.get(&dependency[0].name) {
-                    Some(result) => {
-                        dependency_packages.push(result[0].clone());
-                    }
-                    None => {
-                        packages_not_found.push(dependency[0].name.clone());
-                    }
+                let mut was_dependency_found: bool = false;
+
+                for alternative in &dependency {
+                    match package_database.get(&alternative.name) {
+                        Some(result) => {
+                            dependency_packages.push(result[0].clone());
+                            was_dependency_found = true;
+                            break;
+                        }
+                        None => {}
+                    };
+                };
+
+                if was_dependency_found == false {
+                    packages_not_found.push(dependency[0].name.clone());
                 };
             }
 
             for dependency in current.pre_depends {
-                match package_database.get(&dependency[0].name) {
-                    Some(result) => {
-                        dependency_packages.push(result[0].clone());
-                    }
-                    None => {
-                        packages_not_found.push(dependency[0].name.clone());
-                    }
+                let mut was_dependency_found: bool = false;
+
+                for alternative in &dependency {
+                    match package_database.get(&alternative.name) {
+                        Some(result) => {
+                            dependency_packages.push(result[0].clone());
+                            was_dependency_found = true;
+                            break;
+                        }
+                        None => {}
+                    };
+                };
+
+                if was_dependency_found == false {
+                    packages_not_found.push(dependency[0].name.clone());
                 };
             }
 
             if *consider_recommends == true {
                 for dependency in current.recommends {
-                    match package_database.get(&dependency[0].name) {
-                        Some(result) => {
-                            dependency_packages.push(result[0].clone());
-                        }
-                        None => {
-                            packages_not_found.push(dependency[0].name.clone());
-                        }
+                    let mut was_dependency_found: bool = false;
+
+                    for alternative in &dependency {
+                        match package_database.get(&alternative.name) {
+                            Some(result) => {
+                                dependency_packages.push(result[0].clone());
+                                was_dependency_found = true;
+                                break;
+                            }
+                            None => {}
+                        };
+                    };
+
+                    if was_dependency_found == false {
+                        packages_not_found.push(dependency[0].name.clone());
                     };
                 }
             };

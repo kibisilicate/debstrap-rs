@@ -13,7 +13,7 @@ pub fn resolve_dependencies(
 ) -> Result<Vec<Package>, ()> {
     #[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd)]
     struct Provider {
-        name: String,
+        package: Package,
         provides: Vec<String>,
     }
 
@@ -28,7 +28,7 @@ pub fn resolve_dependencies(
             }
 
             let provider: Provider = Provider {
-                name: package[0].name.clone(),
+                package: package[0].clone(),
                 provides: provides,
             };
 
@@ -135,15 +135,12 @@ pub fn resolve_dependencies(
 
                 for provider in &provides_list {
                     if provider.provides.contains(&package) == true {
-                        if accumulated_packages
-                            .contains(&package_database.get(&provider.name).unwrap()[0])
-                            == true
-                        {
+                        if accumulated_packages.contains(&provider.package) {
                             print_message(
                                 "debug",
                                 &format!(
                                     "package \"{}\" is provided by \"{}\"",
-                                    package, provider.name,
+                                    package, provider.package.name,
                                 ),
                                 &message_config,
                             );
@@ -158,18 +155,14 @@ pub fn resolve_dependencies(
                 if was_package_found == false {
                     for provider in &provides_list {
                         if provider.provides.contains(&package) == true {
-                            if accumulated_packages
-                                .contains(&package_database.get(&provider.name).unwrap()[0])
-                                == false
-                            {
-                                dependency_packages
-                                    .push(package_database.get(&provider.name).unwrap()[0].clone());
+                            if accumulated_packages.contains(&provider.package) == false {
+                                dependency_packages.push(provider.package.clone());
 
                                 print_message(
                                     "debug",
                                     &format!(
                                         "package \"{}\" is provided by \"{}\"",
-                                        package, provider.name,
+                                        package, provider.package.name,
                                     ),
                                     &message_config,
                                 );

@@ -9,12 +9,14 @@ Vcs-Browser: https://github.com/kibisilicate/debstrap-rs
 
 Package: debstrap
 Architecture: any
-Depends: binutils,
+Depends: arch-test,
+         binutils,
+         coreutils,
          gzip,
          mount,
+         tar,
          xz-utils
-Recommends: arch-test,
-            binfmt-support,
+Recommends: binfmt-support,
             bzip2,
             qemu-user-static,
             sudo,

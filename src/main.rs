@@ -228,7 +228,19 @@ fn main() -> ExitCode {
 
         match &early_action_then_exit[0] as &str {
             "print_help_message" => {
-                println!("Placeholder help message.");
+                println!(
+                    "\
+debstrap {DEBSTRAP_VERSION}, bootstrap overly complicated Debian systems.
+
+Usage: debstrap [OPTION...] -r=SUITE[,SUITE,...] -o=DIRECTORY|FILENAME
+Usage: debstrap [OPTION...] --release=SUITE[,SUITE,...] --output=DIRECTORY|FILENAME
+
+debstrap bootstraps Debian and derivative systems using one or more suites, components, architectures, and mirrors.
+
+debstrap can be used to create a base Debian installation or a Debian chroot environment.
+
+See debstrap(8) for more information."
+                );
             }
             "print_version_message" => {
                 println!("debstrap {DEBSTRAP_VERSION}");

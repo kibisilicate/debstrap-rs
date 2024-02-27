@@ -3,7 +3,7 @@ use crate::package::Package;
 use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use std::error::Error;
-use std::io::Cursor;
+use std::io::{Cursor, Write};
 use std::path::Path;
 
 pub struct MessageConfig {
@@ -1135,6 +1135,167 @@ pub fn manually_merge_usr_directories(
             return Err(());
         };
     }
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn create_sources_list(
+    input_uris: &Vec<(String, String)>,
+    input_suites: &Vec<String>,
+    input_components: &Vec<String>,
+    format: &str,
+    output_directory: &str,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    let mut full_uris: Vec<String> = Vec::new();
+
+    for (scheme, path) in input_uris {
+        full_uris.push(format!("{scheme}{path}"));
+    }
+
+    match &format as &str {
+        "deb822-style" => {
+            print_message(
+                "debug",
+                &format!("creating default deb822-style sources list: \"{output_directory}/sources.sources\""),
+                &message_config,
+            );
+
+            if create_file(
+                &format!("{output_directory}/sources.sources"),
+                &format!(
+                    "\
+Types: deb deb-src
+URIs: {}
+Suites: {}
+Components: {}
+",
+                    format!("{:?}", &full_uris).replace(['[', ']', '"', ','], ""),
+                    format!("{:?}", &input_suites).replace(['[', ']', '"', ','], ""),
+                    format!("{:?}", &input_components).replace(['[', ']', '"', ','], ""),
+                ),
+                &message_config,
+            )
+            .is_err()
+                == true
+            {
+                print_message(
+                    "error",
+                    &format!("failed to create file: \"{output_directory}/sources.sources\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+        }
+        "one-line-style" => {
+            print_message(
+                "debug",
+                &format!("creating default one-line-style sources list: \"{output_directory}/sources.list\""),
+                &message_config,
+            );
+
+            if create_file(
+                &format!("{output_directory}/sources.list"),
+                "",
+                &message_config,
+            )
+            .is_err()
+                == true
+            {
+                print_message(
+                    "error",
+                    &format!("failed to create file: \"{output_directory}/sources.list\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+
+            let mut mirror_counter: u16 = 0;
+
+            for mirror in &full_uris {
+                mirror_counter += 1;
+
+                if mirror_counter != 1 {
+                    if std::fs::OpenOptions::new()
+                        .write(true)
+                        .append(true)
+                        .open(format!("{output_directory}/sources.list"))
+                        .unwrap()
+                        .write_all(b"\n")
+                        .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!(
+                                "failed to write to file: \"{output_directory}/sources.list\""
+                            ),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                };
+
+                let mut suite_counter: u16 = 0;
+
+                for suite in input_suites {
+                    suite_counter += 1;
+
+                    if suite_counter != 1 {
+                        if std::fs::OpenOptions::new()
+                            .write(true)
+                            .append(true)
+                            .open(format!("{output_directory}/sources.list"))
+                            .unwrap()
+                            .write_all(b"\n")
+                            .is_err()
+                            == true
+                        {
+                            print_message(
+                                "error",
+                                &format!(
+                                    "failed to write to file: \"{output_directory}/sources.list\""
+                                ),
+                                &message_config,
+                            );
+                            return Err(());
+                        };
+                    };
+
+                    if std::fs::OpenOptions::new()
+                        .write(true)
+                        .append(true)
+                        .open(format!("{output_directory}/sources.list"))
+                        .unwrap()
+                        .write_all(
+                            format!(
+                                "deb-src {mirror} {suite} {}\ndeb {mirror} {suite} {}\n",
+                                format!("{:?}", &input_components)
+                                    .replace(['[', ']', '"', ','], ""),
+                                format!("{:?}", &input_components)
+                                    .replace(['[', ']', '"', ','], "")
+                            )
+                            .as_bytes(),
+                        )
+                        .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!(
+                                "failed to write to file: \"{output_directory}/sources.list\""
+                            ),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                }
+            }
+        }
+        _ => {}
+    };
 
     return Ok(());
 }

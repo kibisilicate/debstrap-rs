@@ -3417,80 +3417,37 @@ See debstrap(8) for more information."
         .any(|package| package.name == "apt")
         == true
     {
-        let mut uris_to_print: Vec<String> = Vec::new();
-
-        for (scheme, path) in &target_uris {
-            uris_to_print.push(format!("{scheme}{path}"));
-        }
-
         match &sources_list_format as &str {
             "deb822-style" => {
-                if Path::new(&format!(
-                    "{target_bootstrap_directory}/etc/apt/sources.list.d"
-                ))
-                .exists()
-                    == false
-                {
-                    print_message(
-                        "debug",
-                        &format!("creating directory: \"{target_bootstrap_directory}/etc/apt/sources.list.d\""),
-                        &message_config,
-                    );
-
-                    if std::fs::create_dir_all(&format!(
-                        "{target_bootstrap_directory}/etc/apt/sources.list.d"
-                    ))
-                    .is_err()
-                        == true
-                    {
-                        print_message(
-                            "error",
-                            &format!("failed to create directory: \"{target_bootstrap_directory}/etc/apt/sources.list.d\""),
-                            &message_config,
-                        );
-
-                        clean_up_on_exit(
-                            &workspace_directory,
-                            Some(&target_bootstrap_directory),
-                            &target_actions_to_skip,
-                            &message_config,
-                        )
-                        .unwrap_or(());
-
-                        return ExitCode::from(1);
-                    };
-                };
-
-                print_message(
-                    "debug",
-                    &format!("creating default deb822-style sources list: \"{target_bootstrap_directory}/etc/apt/sources.list.d/sources.sources\""),
-                    &message_config,
-                );
-
-                if create_file(
-                    &format!("{target_bootstrap_directory}/etc/apt/sources.list.d/sources.sources"),
-                    &format!(
-                        "\
-Types: deb deb-src
-URIs: {}
-Suites: {}
-Components: {}
-",
-                        format!("{:?}", &uris_to_print).replace(['[', ']', '"', ','], ""),
-                        format!("{:?}", &target_suites).replace(['[', ']', '"', ','], ""),
-                        format!("{:?}", &target_components).replace(['[', ']', '"', ','], ""),
-                    ),
+                if create_directory(
+                    &format!("{target_bootstrap_directory}/etc/apt/sources.list.d"),
                     &message_config,
                 )
                 .is_err()
                     == true
                 {
-                    print_message(
-                        "error",
-                        &format!("failed to create file: \"{target_bootstrap_directory}/etc/apt/sources.list.d/sources.sources\""),
+                    clean_up_on_exit(
+                        &workspace_directory,
+                        Some(&target_bootstrap_directory),
+                        &target_actions_to_skip,
                         &message_config,
-                    );
+                    )
+                    .unwrap_or(());
 
+                    return ExitCode::from(1);
+                };
+
+                if create_sources_list(
+                    &target_uris,
+                    &target_suites,
+                    &target_components,
+                    &sources_list_format,
+                    &format!("{target_bootstrap_directory}/etc/apt/sources.list.d"),
+                    &message_config,
+                )
+                .is_err()
+                    == true
+                {
                     clean_up_on_exit(
                         &workspace_directory,
                         Some(&target_bootstrap_directory),
@@ -3503,26 +3460,17 @@ Components: {}
                 };
             }
             "one-line-style" => {
-                print_message(
-                    "debug",
-                    &format!("creating default one-line-style sources list: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
-                    &message_config,
-                );
-
-                if create_file(
-                    &format!("{target_bootstrap_directory}/etc/apt/sources.list"),
-                    "",
+                if create_sources_list(
+                    &target_uris,
+                    &target_suites,
+                    &target_components,
+                    &sources_list_format,
+                    &format!("{target_bootstrap_directory}/etc/apt"),
                     &message_config,
                 )
                 .is_err()
                     == true
                 {
-                    print_message(
-                        "error",
-                        &format!("failed to create file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
-                        &message_config,
-                    );
-
                     clean_up_on_exit(
                         &workspace_directory,
                         Some(&target_bootstrap_directory),
@@ -3533,109 +3481,6 @@ Components: {}
 
                     return ExitCode::from(1);
                 };
-
-                let mut mirror_counter: u16 = 0;
-
-                for mirror in &uris_to_print {
-                    mirror_counter += 1;
-
-                    if mirror_counter != 1 {
-                        if std::fs::OpenOptions::new()
-                            .write(true)
-                            .append(true)
-                            .open(format!("{target_bootstrap_directory}/etc/apt/sources.list"))
-                            .unwrap()
-                            .write_all(b"\n")
-                            .is_err()
-                            == true
-                        {
-                            print_message(
-                                "error",
-                                &format!("failed to write to file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
-                                &message_config,
-                            );
-
-                            clean_up_on_exit(
-                                &workspace_directory,
-                                Some(&target_bootstrap_directory),
-                                &target_actions_to_skip,
-                                &message_config,
-                            )
-                            .unwrap_or(());
-
-                            return ExitCode::from(1);
-                        };
-                    };
-
-                    let mut suite_counter: u16 = 0;
-
-                    for suite in &target_suites {
-                        suite_counter += 1;
-
-                        if suite_counter != 1 {
-                            if std::fs::OpenOptions::new()
-                                .write(true)
-                                .append(true)
-                                .open(format!("{target_bootstrap_directory}/etc/apt/sources.list"))
-                                .unwrap()
-                                .write_all(b"\n")
-                                .is_err()
-                                == true
-                            {
-                                print_message(
-                                    "error",
-                                    &format!("failed to write to file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
-                                    &message_config,
-                                );
-
-                                clean_up_on_exit(
-                                    &workspace_directory,
-                                    Some(&target_bootstrap_directory),
-                                    &target_actions_to_skip,
-                                    &message_config,
-                                )
-                                .unwrap_or(());
-
-                                return ExitCode::from(1);
-                            };
-                        };
-
-                        if std::fs::OpenOptions::new()
-                            .write(true)
-                            .append(true)
-                            .open(format!("{target_bootstrap_directory}/etc/apt/sources.list"))
-                            .unwrap()
-                            .write_all(
-                                format!(
-                                    "deb-src {mirror} {suite} {}\ndeb {mirror} {suite} {}\n",
-                                    format!("{:?}", &target_components)
-                                        .replace(['[', ']', '"', ','], ""),
-                                    format!("{:?}", &target_components)
-                                        .replace(['[', ']', '"', ','], "")
-                                )
-                                .as_bytes(),
-                            )
-                            .is_err()
-                            == true
-                        {
-                            print_message(
-                                "error",
-                                &format!("failed to write to file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
-                                &message_config,
-                            );
-
-                            clean_up_on_exit(
-                                &workspace_directory,
-                                Some(&target_bootstrap_directory),
-                                &target_actions_to_skip,
-                                &message_config,
-                            )
-                            .unwrap_or(());
-
-                            return ExitCode::from(1);
-                        };
-                    }
-                }
             }
             _ => {}
         };

@@ -2609,7 +2609,7 @@ See debstrap(8) for more information."
             if is_package_essential == true {
                 print_message(
                     "debug",
-                    &format!("moving essential package \"{package}\" to \"{initial_packages_directory}\""),
+                    &format!("moving essential package: \"{package}\" to \"{initial_packages_directory}\""),
                     &message_config,
                 );
 
@@ -2657,7 +2657,7 @@ See debstrap(8) for more information."
 
                 print_message(
                     "debug",
-                    &format!("moving non-essential package \"{package}\" to \"{remaining_packages_directory}\""),
+                    &format!("moving non-essential package: \"{package}\" to \"{remaining_packages_directory}\""),
                     &message_config,
                 );
 
@@ -2692,7 +2692,7 @@ See debstrap(8) for more information."
         for package in &downloaded_package_file_names {
             print_message(
                 "debug",
-                &format!("moving package \"{package}\" to \"{initial_packages_directory}\""),
+                &format!("moving package: \"{package}\" to \"{initial_packages_directory}\""),
                 &message_config,
             );
 
@@ -2796,7 +2796,7 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("extracting all packages in \"{initial_packages_directory}\" with \"{target_extractor}\""),
+        &format!("extracting all packages in: \"{initial_packages_directory}\" with \"{target_extractor}\""),
         &message_config,
     );
 
@@ -2939,7 +2939,7 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("moving packages from \"{initial_packages_directory}\" to \"{target_bootstrap_directory}/packages/initial\""),
+        &format!("moving packages from: \"{initial_packages_directory}\" to \"{target_bootstrap_directory}/packages/initial\""),
         &message_config,
     );
 
@@ -3019,7 +3019,7 @@ See debstrap(8) for more information."
 
         print_message(
             "debug",
-            &format!("moving packages from \"{remaining_packages_directory}\" to \"{target_bootstrap_directory}/packages/remaining\""),
+            &format!("moving packages from: \"{remaining_packages_directory}\" to \"{target_bootstrap_directory}/packages/remaining\""),
             &message_config,
         );
 
@@ -3267,7 +3267,7 @@ See debstrap(8) for more information."
     for architecture in &target_architectures {
         print_message(
             "debug",
-            &format!("adding architecture \"{architecture}\" to \"{target_bootstrap_directory}/var/lib/dpkg/arch\""),
+            &format!("adding architecture: \"{architecture}\" to \"{target_bootstrap_directory}/var/lib/dpkg/arch\""),
             &message_config,
         );
 
@@ -3304,7 +3304,7 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating default file \"{target_bootstrap_directory}/etc/fstab\""),
+        &format!("creating default file: \"{target_bootstrap_directory}/etc/fstab\""),
         &message_config,
     );
 
@@ -3376,7 +3376,7 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating default file \"{target_bootstrap_directory}/etc/hosts\""),
+        &format!("creating default file: \"{target_bootstrap_directory}/etc/hosts\""),
         &message_config,
     );
 
@@ -3463,7 +3463,7 @@ See debstrap(8) for more information."
 
                 print_message(
                     "debug",
-                    &format!("creating default deb822-style sources list \"{target_bootstrap_directory}/etc/apt/sources.list.d/sources.sources\""),
+                    &format!("creating default deb822-style sources list: \"{target_bootstrap_directory}/etc/apt/sources.list.d/sources.sources\""),
                     &message_config,
                 );
 
@@ -3485,6 +3485,12 @@ Components: {}
                 .is_err()
                     == true
                 {
+                    print_message(
+                        "error",
+                        &format!("failed to create file: \"{target_bootstrap_directory}/etc/apt/sources.list.d/sources.sources\""),
+                        &message_config,
+                    );
+
                     clean_up_on_exit(
                         &workspace_directory,
                         Some(&target_bootstrap_directory),
@@ -3499,7 +3505,7 @@ Components: {}
             "one-line-style" => {
                 print_message(
                     "debug",
-                    &format!("creating default one-line-style sources list \"{target_bootstrap_directory}/etc/apt/sources.list\""),
+                    &format!("creating default one-line-style sources list: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
                     &message_config,
                 );
 
@@ -3511,6 +3517,12 @@ Components: {}
                 .is_err()
                     == true
                 {
+                    print_message(
+                        "error",
+                        &format!("failed to create file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
+                        &message_config,
+                    );
+
                     clean_up_on_exit(
                         &workspace_directory,
                         Some(&target_bootstrap_directory),
@@ -3634,7 +3646,7 @@ Components: {}
     if merge_usr_directories == None && is_split_usr_supported(&target_suites[0]) == false {
         print_message(
             "debug",
-            &format!("creating warning file \"{target_bootstrap_directory}/etc/unsupported-skip-usrmerge-conversion\""),
+            &format!("creating warning file: \"{target_bootstrap_directory}/etc/unsupported-skip-usrmerge-conversion\""),
             &message_config,
         );
 
@@ -3646,6 +3658,12 @@ Components: {}
         .is_err()
             == true
         {
+            print_message(
+                "error",
+                &format!("failed to create file: \"{target_bootstrap_directory}/etc/unsupported-skip-usrmerge-conversion\""),
+                &message_config,
+            );
+
             clean_up_on_exit(
                 &workspace_directory,
                 Some(&target_bootstrap_directory),
@@ -3680,7 +3698,7 @@ Components: {}
 
                 print_message(
                     "debug",
-                    &format!("creating tarball \"{target_output_directory}/{target_output_file_name}.tar\""),
+                    &format!("creating tarball: \"{target_output_directory}/{target_output_file_name}.tar\""),
                     &message_config,
                 );
 
@@ -3735,7 +3753,7 @@ Components: {}
 
     print_message(
         "debug",
-        &format!("creating temporary file \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
+        &format!("creating temporary file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
         &message_config,
     );
 
@@ -3747,6 +3765,12 @@ Components: {}
     .is_err()
         == true
     {
+        print_message(
+            "error",
+            &format!("failed to create file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
+            &message_config,
+        );
+
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -3802,7 +3826,7 @@ Components: {}
 
     print_message(
         "debug",
-        &format!("renaming file \"{start_stop_daemon_location}\" to \"{start_stop_daemon_location}.ORIGINAL\""),
+        &format!("renaming file: \"{start_stop_daemon_location}\" to \"{start_stop_daemon_location}.ORIGINAL\""),
         &message_config,
     );
     if std::fs::rename(
@@ -3831,7 +3855,7 @@ Components: {}
 
     print_message(
         "debug",
-        &format!("creating temporary file \"{start_stop_daemon_location}\""),
+        &format!("creating temporary file: \"{start_stop_daemon_location}\""),
         &message_config,
     );
 
@@ -3925,7 +3949,7 @@ update-alternatives --force --install /bin/dash dash /bin/bash 999
 
     print_message(
         "debug",
-        &format!("installing all packages in \"{initial_packages_directory}\""),
+        &format!("installing all packages in: \"{initial_packages_directory}\""),
         &message_config,
     );
 
@@ -3982,7 +4006,7 @@ dpkg --force-depends --force-confold --install *.deb
     if Path::new(&remaining_packages_directory).exists() == true {
         print_message(
             "debug",
-            &format!("installing all packages in \"{remaining_packages_directory}\""),
+            &format!("installing all packages in: \"{remaining_packages_directory}\""),
             &message_config,
         );
 
@@ -4053,7 +4077,7 @@ dpkg --force-depends --force-confold --install *.deb
 
     print_message(
         "debug",
-        &format!("removing temporary file \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
+        &format!("removing temporary file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
         &message_config,
     );
 
@@ -4081,7 +4105,7 @@ dpkg --force-depends --force-confold --install *.deb
 
     print_message(
         "debug",
-        &format!("removing temporary file \"{start_stop_daemon_location}\""),
+        &format!("removing temporary file: \"{start_stop_daemon_location}\""),
         &message_config,
     );
 
@@ -4105,7 +4129,7 @@ dpkg --force-depends --force-confold --install *.deb
 
     print_message(
         "debug",
-        &format!("renaming file \"{start_stop_daemon_location}.ORIGINAL\" to \"{start_stop_daemon_location}\""),
+        &format!("renaming file: \"{start_stop_daemon_location}.ORIGINAL\" to \"{start_stop_daemon_location}\""),
         &message_config,
     );
 
@@ -4170,7 +4194,7 @@ dpkg --force-depends --force-confold --install *.deb
     if Path::new(&format!("{target_bootstrap_directory}/etc/machine-id")).exists() == true {
         print_message(
             "debug",
-            &format!("removing file \"{target_bootstrap_directory}/etc/machine-id\""),
+            &format!("removing file: \"{target_bootstrap_directory}/etc/machine-id\""),
             &message_config,
         );
 
@@ -4196,7 +4220,7 @@ dpkg --force-depends --force-confold --install *.deb
 
         print_message(
             "debug",
-            &format!("creating default file \"{target_bootstrap_directory}/etc/machine-id\" with value \"uninitialized\""),
+            &format!("creating default file: \"{target_bootstrap_directory}/etc/machine-id\" with value: \"uninitialized\""),
             &message_config,
         );
 

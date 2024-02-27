@@ -11,7 +11,7 @@ debstrap - Bootstrap overly complicated Debian systems
 **debstrap**\ \[*OPTION*\...\]\ **\--release**=*SUITE*\[,*SUITE*,\...\]\ **\--output**=*DIRECTORY*|*FILENAME*
 
 # DESCRIPTION
-**debstrap** bootstraps a Debian system using one or more suites, components, architectures, and mirrors.
+**debstrap** bootstraps Debian and derivative systems using one or more suites, components, architectures, and mirrors.
 
 **debstrap** can be used to create a base Debian installation or a Debian chroot environment (see the section **EXAMPLES**).
 

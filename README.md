@@ -1,10 +1,12 @@
 # debstrap-rs
 
-**debstrap** bootstraps Debian and derivative systems (Currently it can only use the first of any provided suites, components, architectures, and mirrors).
+**debstrap** bootstraps Debian and derivative systems using one or more suites, components, architectures, and mirrors.
 
 **debstrap** can be used to create a base Debian installation or a Debian chroot environment.
 
 ## Dependencies
+
+### Build Dependencies
 
 The following packages are needed for building **debstrap**:
 
@@ -12,6 +14,27 @@ The following packages are needed for building **debstrap**:
 * cargo
 * libssl-dev
 * pandoc
+
+### Runtime Dependencies
+
+The following packages are needed for running **debstrap**:
+
+* binutils
+* coreutils
+* mount
+* tar
+* gzip
+* xz-utils
+* arch-test
+
+### Optional Dependencies
+
+The following packages provide extra functionality to **debstrap**:
+
+* qemu-user-static
+* binfmt-support
+* bzip2
+* zstd
 
 ## Installation
 
@@ -37,6 +60,6 @@ Build and install .deb package:
 
 ```
 sudo debuild --unsigned-source --unsigned-changes
-sudo dpkg --install ../debstrap_0.0.1_*.deb
+sudo dpkg --install ../debstrap_*.deb
 ```
 

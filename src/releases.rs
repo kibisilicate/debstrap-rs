@@ -118,35 +118,35 @@ pub fn default_output_file_name(suite: &str, architecture: &str, variant: &str) 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub fn default_mirrors(suite: &str, architecture: &str) -> Vec<String> {
-    let mut mirrors: Vec<String> = Vec::new();
+pub fn default_uris(suite: &str, architecture: &str) -> Vec<String> {
+    let mut uris: Vec<String> = Vec::new();
 
     if DEBIAN_CURRENT_SUITES.contains(&suite) == true {
         match architecture {
             "amd64" | "arm64" | "armel" | "armhf" | "i386" | "mips64el" | "mipsel" | "ppc64el"
             | "s390x" => {
-                mirrors.push(String::from(DEBIAN_CURRENT_MIRROR));
+                uris.push(String::from(DEBIAN_CURRENT_MIRROR));
             }
             _ => {
-                mirrors.push(String::from(DEBIAN_PORTS_MIRROR));
+                uris.push(String::from(DEBIAN_PORTS_MIRROR));
             }
         };
     } else if DEBIAN_OBSOLUTE_SUITES.contains(&suite) == true {
-        mirrors.push(String::from(DEBIAN_OBSOLETE_MIRROR));
+        uris.push(String::from(DEBIAN_OBSOLETE_MIRROR));
     } else if UBUNTU_CURRENT_SUITES.contains(&suite) == true {
         match architecture {
             "amd64" | "i386" => {
-                mirrors.push(String::from(UBUNTU_CURRENT_MIRROR));
+                uris.push(String::from(UBUNTU_CURRENT_MIRROR));
             }
             _ => {
-                mirrors.push(String::from(UBUNTU_PORTS_MIRROR));
+                uris.push(String::from(UBUNTU_PORTS_MIRROR));
             }
         };
     } else if UBUNTU_OBSOLETE_SUITES.contains(&suite) == true {
-        mirrors.push(String::from(UBUNTU_OBSOLETE_MIRROR));
+        uris.push(String::from(UBUNTU_OBSOLETE_MIRROR));
     };
 
-    return mirrors;
+    return uris;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

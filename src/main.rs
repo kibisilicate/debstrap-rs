@@ -1199,7 +1199,7 @@ See debstrap(8) for more information."
     //////////////////////////////////////////////
 
     if chosen_uris.len() == 0 {
-        for uri in default_mirrors(&target_suites[0], &target_architectures[0]) {
+        for uri in default_uris(&target_suites[0], &target_architectures[0]) {
             chosen_uris.push(uri);
         }
     };
@@ -3767,7 +3767,9 @@ Components: {}
     {
         print_message(
             "error",
-            &format!("failed to create file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
+            &format!(
+                "failed to create file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""
+            ),
             &message_config,
         );
 

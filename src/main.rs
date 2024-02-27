@@ -1654,46 +1654,20 @@ See debstrap(8) for more information."
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if Path::new(&workspace_directory).exists() == false {
-        print_message(
-            "debug",
-            &format!("creating directory: \"{workspace_directory}\""),
+    if create_directory(&workspace_directory, &message_config).is_err() == true {
+        clean_up_on_exit(
+            &workspace_directory,
+            None,
+            &target_actions_to_skip,
             &message_config,
-        );
+        )
+        .unwrap_or(());
 
-        if std::fs::create_dir(&workspace_directory).is_err() == true {
-            print_message(
-                "error",
-                &format!("failed to create directory: \"{workspace_directory}\""),
-                &message_config,
-            );
-
-            clean_up_on_exit(
-                &workspace_directory,
-                None,
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
-
-            return ExitCode::from(1);
-        };
+        return ExitCode::from(1);
     };
 
     if discard_output_on_exit == true {
-        print_message(
-            "debug",
-            &format!("creating directory: \"{target_output_directory}\""),
-            &message_config,
-        );
-
-        if std::fs::create_dir(&target_output_directory).is_err() == true {
-            print_message(
-                "error",
-                &format!("failed to create directory: \"{target_output_directory}\""),
-                &message_config,
-            );
-
+        if create_directory(&target_output_directory, &message_config).is_err() == true {
             clean_up_on_exit(
                 &workspace_directory,
                 None,
@@ -1712,19 +1686,7 @@ See debstrap(8) for more information."
 
     let package_lists_directory: String = format!("{workspace_directory}/lists");
 
-    print_message(
-        "debug",
-        &format!("creating directory: \"{package_lists_directory}\""),
-        &message_config,
-    );
-
-    if std::fs::create_dir(&package_lists_directory).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to create directory: \"{package_lists_directory}\""),
-            &message_config,
-        );
-
+    if create_directory(&package_lists_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             None,
@@ -2198,19 +2160,7 @@ See debstrap(8) for more information."
 
     let all_packages_directory: String = format!("{workspace_directory}/packages");
 
-    print_message(
-        "debug",
-        &format!("creating directory: \"{all_packages_directory}\""),
-        &message_config,
-    );
-
-    if std::fs::create_dir(&all_packages_directory).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to create directory: \"{all_packages_directory}\""),
-            &message_config,
-        );
-
+    if create_directory(&all_packages_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             None,
@@ -2224,19 +2174,7 @@ See debstrap(8) for more information."
 
     let downloaded_packages_directory: String = format!("{all_packages_directory}/downloaded");
 
-    print_message(
-        "debug",
-        &format!("creating directory: \"{downloaded_packages_directory}\""),
-        &message_config,
-    );
-
-    if std::fs::create_dir(&downloaded_packages_directory).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to create directory: \"{downloaded_packages_directory}\""),
-            &message_config,
-        );
-
+    if create_directory(&downloaded_packages_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             None,
@@ -2404,19 +2342,7 @@ See debstrap(8) for more information."
     };
 
     if Path::new(&target_bootstrap_directory).exists() == false {
-        print_message(
-            "debug",
-            &format!("creating directory: \"{target_bootstrap_directory}\""),
-            &message_config,
-        );
-
-        if std::fs::create_dir(&target_bootstrap_directory).is_err() == true {
-            print_message(
-                "error",
-                &format!("failed to create directory: \"{target_bootstrap_directory}\""),
-                &message_config,
-            );
-
+        if create_directory(&target_bootstrap_directory, &message_config).is_err() == true {
             clean_up_on_exit(
                 &workspace_directory,
                 Some(&target_bootstrap_directory),
@@ -2435,19 +2361,7 @@ See debstrap(8) for more information."
 
     let remaining_packages_directory: String = format!("{all_packages_directory}/remaining");
 
-    print_message(
-        "debug",
-        &format!("creating directory: \"{initial_packages_directory}\""),
-        &message_config,
-    );
-
-    if std::fs::create_dir(&initial_packages_directory).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to create directory: \"{initial_packages_directory}\""),
-            &message_config,
-        );
-
+    if create_directory(&initial_packages_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -2726,21 +2640,9 @@ See debstrap(8) for more information."
                 };
             } else {
                 if Path::new(&remaining_packages_directory).exists() == false {
-                    print_message(
-                        "debug",
-                        &format!("creating directory: \"{remaining_packages_directory}\""),
-                        &message_config,
-                    );
-
-                    if std::fs::create_dir(&remaining_packages_directory).is_err() == true {
-                        print_message(
-                            "error",
-                            &format!(
-                                "failed to create directory: \"{remaining_packages_directory}\""
-                            ),
-                            &message_config,
-                        );
-
+                    if create_directory(&remaining_packages_directory, &message_config).is_err()
+                        == true
+                    {
                         clean_up_on_exit(
                             &workspace_directory,
                             Some(&target_bootstrap_directory),
@@ -2853,19 +2755,7 @@ See debstrap(8) for more information."
         };
     };
 
-    print_message(
-        "debug",
-        &format!("removing directory: \"{downloaded_packages_directory}\""),
-        &message_config,
-    );
-
-    if std::fs::remove_dir(&downloaded_packages_directory).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to remove directory: \"{downloaded_packages_directory}\""),
-            &message_config,
-        );
-
+    if remove_directory(&downloaded_packages_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -2994,19 +2884,13 @@ See debstrap(8) for more information."
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    print_message(
-        "debug",
-        &format!("creating directory: \"{target_bootstrap_directory}/packages\""),
+    if create_directory(
+        &format!("{target_bootstrap_directory}/packages"),
         &message_config,
-    );
-
-    if std::fs::create_dir(&format!("{target_bootstrap_directory}/packages")).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to create directory: \"{target_bootstrap_directory}/packages\""),
-            &message_config,
-        );
-
+    )
+    .is_err()
+        == true
+    {
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -3018,23 +2902,13 @@ See debstrap(8) for more information."
         return ExitCode::from(1);
     };
 
-    print_message(
-        "debug",
-        &format!("creating directory: \"{target_bootstrap_directory}/packages/initial\""),
+    if create_directory(
+        &format!("{target_bootstrap_directory}/packages/initial"),
         &message_config,
-    );
-
-    if std::fs::create_dir(&format!("{target_bootstrap_directory}/packages/initial")).is_err()
+    )
+    .is_err()
         == true
     {
-        print_message(
-            "error",
-            &format!(
-                "failed to create directory: \"{target_bootstrap_directory}/packages/initial\""
-            ),
-            &message_config,
-        );
-
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -3095,19 +2969,7 @@ See debstrap(8) for more information."
         };
     }
 
-    print_message(
-        "debug",
-        &format!("removing directory: \"{initial_packages_directory}\""),
-        &message_config,
-    );
-
-    if std::fs::remove_dir(&initial_packages_directory).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to remove directory: \"{initial_packages_directory}\""),
-            &message_config,
-        );
-
+    if remove_directory(&initial_packages_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -3120,21 +2982,13 @@ See debstrap(8) for more information."
     };
 
     if Path::new(&remaining_packages_directory).exists() == true {
-        print_message(
-            "debug",
-            &format!("creating directory: \"{target_bootstrap_directory}/packages/remaining\""),
+        if create_directory(
+            &format!("{target_bootstrap_directory}/packages/remaining"),
             &message_config,
-        );
-
-        if std::fs::create_dir(&format!("{target_bootstrap_directory}/packages/remaining")).is_err()
+        )
+        .is_err()
             == true
         {
-            print_message(
-                "error",
-                &format!("failed to create directory: \"{target_bootstrap_directory}/packages/remaining\""),
-                &message_config,
-            );
-
             clean_up_on_exit(
                 &workspace_directory,
                 Some(&target_bootstrap_directory),
@@ -3195,19 +3049,7 @@ See debstrap(8) for more information."
             };
         }
 
-        print_message(
-            "debug",
-            &format!("removing directory: \"{remaining_packages_directory}\""),
-            &message_config,
-        );
-
-        if std::fs::remove_dir(&remaining_packages_directory).is_err() == true {
-            print_message(
-                "error",
-                &format!("failed to remove directory: \"{remaining_packages_directory}\""),
-                &message_config,
-            );
-
+        if remove_directory(&remaining_packages_directory, &message_config).is_err() == true {
             clean_up_on_exit(
                 &workspace_directory,
                 Some(&target_bootstrap_directory),

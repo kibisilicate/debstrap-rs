@@ -103,6 +103,74 @@ pub fn create_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn create_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
+    match Path::new(directory_path).exists() {
+        true => {
+            print_message(
+                "error",
+                &format!("directory: \"{directory_path}\" already exists."),
+                &message_config,
+            );
+            return Err(());
+        }
+        false => {
+            print_message(
+                "debug",
+                &format!("creating directory: \"{directory_path}\""),
+                &message_config,
+            );
+
+            match std::fs::create_dir(directory_path) {
+                Ok(..) => return Ok(()),
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("failed to create directory: \"{directory_path}\""),
+                        &message_config,
+                    );
+                    return Err(());
+                }
+            };
+        }
+    };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn remove_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
+    match Path::new(directory_path).exists() {
+        true => {
+            print_message(
+                "debug",
+                &format!("removing directory: \"{directory_path}\""),
+                &message_config,
+            );
+
+            match std::fs::remove_dir(directory_path) {
+                Ok(..) => return Ok(()),
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("failed to remove directory: \"{directory_path}\""),
+                        &message_config,
+                    );
+                    return Err(());
+                }
+            };
+        }
+        false => {
+            print_message(
+                "error",
+                &format!("directory: \"{directory_path}\" does not exist."),
+                &message_config,
+            );
+            return Err(());
+        }
+    };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn move_file(from: String, to: String) -> Result<(), ()> {
     if std::fs::copy(&from, to).is_err() == true {
         return Err(());

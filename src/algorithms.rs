@@ -107,7 +107,7 @@ pub fn resolve_dependencies(
                         }
                         None => {}
                     };
-                };
+                }
 
                 if was_dependency_found == false {
                     packages_not_found.push(dependency[0].name.clone());
@@ -126,7 +126,7 @@ pub fn resolve_dependencies(
                         }
                         None => {}
                     };
-                };
+                }
 
                 if was_dependency_found == false {
                     packages_not_found.push(dependency[0].name.clone());
@@ -146,7 +146,7 @@ pub fn resolve_dependencies(
                             }
                             None => {}
                         };
-                    };
+                    }
 
                     if was_dependency_found == false {
                         packages_not_found.push(dependency[0].name.clone());
@@ -163,7 +163,7 @@ pub fn resolve_dependencies(
                             print_message(
                                 "debug",
                                 &format!(
-                                    "package \"{}\" is provided by \"{}\"",
+                                    "package: \"{}\" is provided by: \"{}\"",
                                     package, provider.package.name,
                                 ),
                                 &message_config,
@@ -185,7 +185,7 @@ pub fn resolve_dependencies(
                                 print_message(
                                     "debug",
                                     &format!(
-                                        "package \"{}\" is provided by \"{}\"",
+                                        "package: \"{}\" is provided by: \"{}\"",
                                         package, provider.package.name,
                                     ),
                                     &message_config,

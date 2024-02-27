@@ -92,7 +92,7 @@ pub fn create_file(
     if std::fs::write(file_path, file_contents).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create file \"{file_path}\""),
+            &format!("failed to create file: \"{file_path}\""),
             &message_config,
         );
         return Err(());
@@ -485,7 +485,7 @@ pub async fn download_file(
 
     let filename: String = String::from(Path::new(&uri).file_name().unwrap().to_string_lossy());
 
-    print_message("debug", &format!("downloading \"{uri}\""), &message_config);
+    print_message("debug", &format!("downloading: \"{uri}\""), &message_config);
 
     match server_response {
         Ok(result) => {
@@ -496,7 +496,7 @@ pub async fn download_file(
                 let mut binary_contents = Cursor::new(result.bytes().await.unwrap());
 
                 if std::io::copy(&mut binary_contents, &mut output_file).is_err() == true {
-                    return Err(format!("failed to write file \"{filename}\""));
+                    return Err(format!("failed to write file: \"{filename}\""));
                 };
             } else {
                 let status_code: u16 = result.status().as_u16();
@@ -504,13 +504,13 @@ pub async fn download_file(
                 let reason: String = String::from(result.status().canonical_reason().unwrap());
 
                 return Err(format!(
-                    "failed to download file \"{filename}\" ({status_code} {reason})"
+                    "failed to download file: \"{filename}\" ({status_code} {reason})"
                 ));
             };
         }
         Err(result) => {
             return Err(format!(
-                "failed to download file \"{filename}\" ({})",
+                "failed to download file: \"{filename}\" ({})",
                 result.source().unwrap()
             ));
         }
@@ -622,7 +622,7 @@ pub fn download_package_lists(
                                 {
                                     print_message(
                                         "error",
-                                        &format!("failed to rename file \"Packages\""),
+                                        &format!("failed to rename file: \"Packages\""),
                                         &message_config,
                                     );
 
@@ -788,7 +788,7 @@ pub fn extract_deb_control_field(
                 Err(..) => {
                     print_message(
                         "error",
-                        &format!("failed to read file \"{package}\""),
+                        &format!("failed to read file: \"{package}\""),
                         &message_config,
                     );
                     return Err(());
@@ -852,7 +852,7 @@ pub fn extract_deb_data(
                 Err(..) => {
                     print_message(
                         "error",
-                        &format!("failed to read file \"{package}\""),
+                        &format!("failed to read file: \"{package}\""),
                         &message_config,
                     );
                     return Err(());
@@ -1016,14 +1016,14 @@ pub fn manually_merge_usr_directories(
 
     print_message(
         "debug",
-        &format!("creating directory \"{bootstrap_directory}/usr\""),
+        &format!("creating directory: \"{bootstrap_directory}/usr\""),
         &message_config,
     );
 
     if std::fs::create_dir(&format!("{bootstrap_directory}/usr")).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create directory \"{bootstrap_directory}/usr\""),
+            &format!("failed to create directory: \"{bootstrap_directory}/usr\""),
             &message_config,
         );
 
@@ -1033,7 +1033,7 @@ pub fn manually_merge_usr_directories(
     for usr_directory in usr_directories_to_symlink {
         print_message(
             "debug",
-            &format!("creating directory \"{bootstrap_directory}/usr/{usr_directory}\""),
+            &format!("creating directory: \"{bootstrap_directory}/usr/{usr_directory}\""),
             &message_config,
         );
 
@@ -1043,7 +1043,7 @@ pub fn manually_merge_usr_directories(
             print_message(
                 "error",
                 &format!(
-                    "failed to create directory \"{bootstrap_directory}/usr/{usr_directory}\""
+                    "failed to create directory: \"{bootstrap_directory}/usr/{usr_directory}\""
                 ),
                 &message_config,
             );
@@ -1053,14 +1053,14 @@ pub fn manually_merge_usr_directories(
 
         print_message(
             "debug",
-            &format!("linking \"{bootstrap_directory}/usr/{usr_directory}\" to \"{bootstrap_directory}/{usr_directory}\""),
+            &format!("linking: \"{bootstrap_directory}/usr/{usr_directory}\" to \"{bootstrap_directory}/{usr_directory}\""),
             &message_config,
         );
 
         if run_cmd!(ln --symbolic --relative "$bootstrap_directory/usr/$usr_directory" "$bootstrap_directory/$usr_directory" 2> /dev/stdout).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create link \"{bootstrap_directory}/{usr_directory}\""),
+                &format!("failed to create link: \"{bootstrap_directory}/{usr_directory}\""),
                 &message_config,
             );
 
@@ -1079,7 +1079,7 @@ pub fn mount_virtual_kernel_file_systems(
 ) -> Result<(), ()> {
     print_message(
         "debug",
-        &format!("bind-mounting \"/dev\" to \"{directory}/dev\""),
+        &format!("bind-mounting: \"/dev\" to \"{directory}/dev\""),
         &message_config,
     );
     if run_cmd!(mount --bind /dev "$directory/dev" 2> /dev/stdout).is_err() == true {
@@ -1089,7 +1089,7 @@ pub fn mount_virtual_kernel_file_systems(
 
     print_message(
         "debug",
-        &format!("bind-mounting \"/dev/pts\" to \"{directory}/dev/pts\""),
+        &format!("bind-mounting: \"/dev/pts\" to \"{directory}/dev/pts\""),
         &message_config,
     );
     if run_cmd!(mount --bind /dev/pts "$directory/dev/pts" 2> /dev/stdout).is_err() == true {
@@ -1099,7 +1099,7 @@ pub fn mount_virtual_kernel_file_systems(
 
     print_message(
         "debug",
-        &format!("mounting \"proc\" to \"{directory}/proc\""),
+        &format!("mounting: \"proc\" to \"{directory}/proc\""),
         &message_config,
     );
     if run_cmd!(mount --types proc proc "$directory/proc" 2> /dev/stdout).is_err() == true {
@@ -1109,7 +1109,7 @@ pub fn mount_virtual_kernel_file_systems(
 
     print_message(
         "debug",
-        &format!("mounting \"sysfs\" to \"{directory}/sys\""),
+        &format!("mounting: \"sysfs\" to \"{directory}/sys\""),
         &message_config,
     );
     if run_cmd!(mount --types sysfs sysfs "$directory/sys" 2> /dev/stdout).is_err() == true {
@@ -1119,7 +1119,7 @@ pub fn mount_virtual_kernel_file_systems(
 
     print_message(
         "debug",
-        &format!("mounting \"tmpfs\" to \"{directory}/run\""),
+        &format!("mounting: \"tmpfs\" to \"{directory}/run\""),
         &message_config,
     );
     if run_cmd!(mount --types tmpfs tmpfs "$directory/run" 2> /dev/stdout).is_err() == true {
@@ -1146,13 +1146,13 @@ pub fn unmount_virtual_kernel_file_systems(
         if entry.contains(&format!(" {directory}/run ")) == true {
             print_message(
                 "debug",
-                &format!("unmounting \"{directory}/run\""),
+                &format!("unmounting: \"{directory}/run\""),
                 &message_config,
             );
             if run_cmd!(umount --force "$directory/run" 2> /dev/stdout).is_err() == true {
                 print_message(
                     "error",
-                    &format!("failed to unmount \"{directory}/run\""),
+                    &format!("failed to unmount: \"{directory}/run\""),
                     &message_config,
                 );
                 return Err(());
@@ -1165,13 +1165,13 @@ pub fn unmount_virtual_kernel_file_systems(
         if entry.contains(&format!(" {directory}/sys ")) == true {
             print_message(
                 "debug",
-                &format!("unmounting \"{directory}/sys\""),
+                &format!("unmounting: \"{directory}/sys\""),
                 &message_config,
             );
             if run_cmd!(umount --force "$directory/sys" 2> /dev/stdout).is_err() == true {
                 print_message(
                     "error",
-                    &format!("failed to unmount \"{directory}/sys\""),
+                    &format!("failed to unmount: \"{directory}/sys\""),
                     &message_config,
                 );
                 return Err(());
@@ -1184,13 +1184,13 @@ pub fn unmount_virtual_kernel_file_systems(
         if entry.contains(&format!(" {directory}/proc ")) == true {
             print_message(
                 "debug",
-                &format!("unmounting \"{directory}/proc\""),
+                &format!("unmounting: \"{directory}/proc\""),
                 &message_config,
             );
             if run_cmd!(umount --force "$directory/proc" 2> /dev/stdout).is_err() == true {
                 print_message(
                     "error",
-                    &format!("failed to unmount \"{directory}/proc\""),
+                    &format!("failed to unmount: \"{directory}/proc\""),
                     &message_config,
                 );
                 return Err(());
@@ -1203,13 +1203,13 @@ pub fn unmount_virtual_kernel_file_systems(
         if entry.contains(&format!(" {directory}/dev/pts ")) == true {
             print_message(
                 "debug",
-                &format!("unmounting \"{directory}/dev/pts\""),
+                &format!("unmounting: \"{directory}/dev/pts\""),
                 &message_config,
             );
             if run_cmd!(umount --force "$directory/dev/pts" 2> /dev/stdout).is_err() == true {
                 print_message(
                     "error",
-                    &format!("failed to unmount \"{directory}/dev/pts\""),
+                    &format!("failed to unmount: \"{directory}/dev/pts\""),
                     &message_config,
                 );
                 return Err(());
@@ -1222,13 +1222,13 @@ pub fn unmount_virtual_kernel_file_systems(
         if entry.contains(&format!(" {directory}/dev ")) == true {
             print_message(
                 "debug",
-                &format!("unmounting \"{directory}/dev\""),
+                &format!("unmounting: \"{directory}/dev\""),
                 &message_config,
             );
             if run_cmd!(umount --force "$directory/dev" 2> /dev/stdout).is_err() == true {
                 print_message(
                     "error",
-                    &format!("failed to unmount \"{directory}/dev\""),
+                    &format!("failed to unmount: \"{directory}/dev\""),
                     &message_config,
                 );
                 return Err(());
@@ -1264,12 +1264,16 @@ pub fn run_hooks(
         None => target_directory = String::new(),
     };
 
+    let mut counter: u16 = 0;
+
     for shell_code in hooks {
         let mut did_hook_return_error: bool = false;
 
+        counter += 1;
+
         print_message(
             "debug",
-            &format!("running shell code: {{\n{shell_code}\n}}"),
+            &format!("running hook no. {counter}"),
             &message_config,
         );
 
@@ -1380,18 +1384,18 @@ pub fn clean_up_on_exit(
 
     if Path::new(workspace_directory).exists() == true {
         if actions_to_skip.contains(&String::from("workspace_removal")) == true {
-            println!("not removing directory \"{workspace_directory}\"");
+            println!("not removing directory: \"{workspace_directory}\"");
         } else {
             print_message(
                 "debug",
-                &format!("removing directory \"{workspace_directory}\""),
+                &format!("removing directory: \"{workspace_directory}\""),
                 &message_config,
             );
 
             if std::fs::remove_dir_all(workspace_directory).is_err() == true {
                 print_message(
                     "error",
-                    &format!("failed to remove directory \"{workspace_directory}\""),
+                    &format!("failed to remove directory: \"{workspace_directory}\""),
                     &message_config,
                 );
                 return Err(());
@@ -1399,7 +1403,7 @@ pub fn clean_up_on_exit(
         };
     };
 
-    print_message("debug", "debstrap exiting now.", &message_config);
+    print_message("debug", "debstrap exiting now", &message_config);
 
     return Ok(());
 }

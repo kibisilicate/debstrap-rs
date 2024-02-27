@@ -78,17 +78,11 @@ fn main() -> ExitCode {
 
     if chosen_print_color.is_empty() == true {
         match std::env::var("DEBSTRAP_COLOR") {
-            Ok(result) => {
-                chosen_print_color = result;
-            }
+            Ok(result) => chosen_print_color = result,
             Err(..) => {
                 match std::env::var("NO_COLOR") {
-                    Ok(..) => {
-                        chosen_print_color = String::from("false");
-                    }
-                    Err(..) => {
-                        chosen_print_color = String::from("auto");
-                    }
+                    Ok(..) => chosen_print_color = String::from("false"),
+                    Err(..) => chosen_print_color = String::from("auto"),
                 };
             }
         };
@@ -97,12 +91,8 @@ fn main() -> ExitCode {
     let print_color: bool;
 
     match &chosen_print_color as &str {
-        "always" | "true" => {
-            print_color = true;
-        }
-        "never" | "false" => {
-            print_color = false;
-        }
+        "always" | "true" => print_color = true,
+        "never" | "false" => print_color = false,
         "auto" => {
             if termion::is_tty(&std::fs::File::create("/dev/stdout").unwrap()) == true {
                 print_color = true;
@@ -110,9 +100,7 @@ fn main() -> ExitCode {
                 print_color = false;
             }
         }
-        _ => {
-            print_color = false;
-        }
+        _ => print_color = false,
     };
 
     //////////////////////////////////////////////
@@ -121,32 +109,20 @@ fn main() -> ExitCode {
         match std::env::var("DEBSTRAP_DEBUG") {
             Ok(value) => {
                 match &value as &str {
-                    "true" => {
-                        chosen_print_debug = Some(true);
-                    }
-                    "false" => {
-                        chosen_print_debug = Some(false);
-                    }
-                    _ => {
-                        chosen_print_debug = Some(false);
-                    }
+                    "true" => chosen_print_debug = Some(true),
+                    "false" => chosen_print_debug = Some(false),
+                    _ => chosen_print_debug = Some(false),
                 };
             }
-            Err(..) => {
-                chosen_print_debug = Some(false);
-            }
+            Err(..) => chosen_print_debug = Some(false),
         };
     };
 
     let print_debug: bool;
 
     match chosen_print_debug.unwrap() {
-        true => {
-            print_debug = true;
-        }
-        false => {
-            print_debug = false;
-        }
+        true => print_debug = true,
+        false => print_debug = false,
     };
 
     //////////////////////////////////////////////
@@ -172,7 +148,7 @@ fn main() -> ExitCode {
         Err(..) => {
             print_message(
                 "error",
-                "failed to read environment variable \"USER\"",
+                "failed to read environment variable: \"USER\"",
                 &message_config,
             );
             return ExitCode::from(1);
@@ -198,7 +174,7 @@ fn main() -> ExitCode {
                 Err(..) => {
                     print_message(
                         "error",
-                        "failed to read environment variable \"TERM\"",
+                        "failed to read environment variable: \"TERM\"",
                         &message_config,
                     );
                     return ExitCode::from(1);
@@ -257,7 +233,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{DEBSTRAP_VERSION}\"",
-            space_and_truncate_string("debstrap version:", 41)
+            space_and_truncate_string("debstrap version:", 47)
         ),
         &message_config,
     );
@@ -530,7 +506,7 @@ See debstrap(8) for more information."
                 } else {
                     print_message(
                         "error",
-                        &format!("directory \"{result}\" is not empty."),
+                        &format!("directory: \"{result}\" is not empty."),
                         &message_config,
                     );
                     return ExitCode::from(1);
@@ -538,7 +514,7 @@ See debstrap(8) for more information."
             } else {
                 print_message(
                     "error",
-                    &format!("directory \"{result}\" does not exist."),
+                    &format!("directory: \"{result}\" does not exist."),
                     &message_config,
                 );
                 return ExitCode::from(1);
@@ -558,7 +534,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{workspace_directory}\"",
-            space_and_truncate_string("workspace directory:", 41)
+            space_and_truncate_string("workspace directory:", 47)
         ),
         &message_config,
     );
@@ -693,14 +669,16 @@ See debstrap(8) for more information."
         } else if provided_path.is_file() == true {
             print_message(
                 "error",
-                &format!("file \"{}\" already exists.", provided_path.display()),
+                &format!("file: \"{}\" already exists.", provided_path.display()),
                 &message_config,
             );
             return ExitCode::from(1);
         } else {
             let parent_dir: String =
                 String::from(provided_path.parent().unwrap().to_string_lossy());
+
             let parent_dir = Path::new(&parent_dir);
+
             if parent_dir.is_dir() == true {
                 target_output_directory =
                     String::from(parent_dir.canonicalize().unwrap().to_string_lossy());
@@ -712,10 +690,12 @@ See debstrap(8) for more information."
                 );
                 return ExitCode::from(1);
             }
+
             chosen_output_file_name =
                 String::from(provided_path.file_name().unwrap().to_string_lossy());
-            match chosen_output_file_name {
-                _ if chosen_output_file_name.ends_with(".tar") => {
+
+            match &chosen_output_file_name {
+                file_name if file_name.ends_with(".tar") => {
                     implied_output_format = String::from("tarball");
                 }
                 _ => {
@@ -734,7 +714,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{target_output_directory}\"",
-            space_and_truncate_string("target output directory:", 41)
+            space_and_truncate_string("target output directory:", 47)
         ),
         &message_config,
     );
@@ -770,7 +750,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{target_output_format}\"",
-            space_and_truncate_string("target output format:", 41)
+            space_and_truncate_string("target output format:", 47)
         ),
         &message_config,
     );
@@ -779,7 +759,7 @@ See debstrap(8) for more information."
         if target_output_format != implied_output_format {
             print_message(
                 "error",
-                &format!("format \"{target_output_format}\" was chosen but output implied \"{implied_output_format}\""),
+                &format!("format: \"{target_output_format}\" was chosen but output implied: \"{implied_output_format}\""),
                 &message_config,
             );
             return ExitCode::from(1);
@@ -832,6 +812,7 @@ See debstrap(8) for more information."
 
     for suite in chosen_suites {
         counter += 1;
+
         if counter == 1 {
             if check_primary_suite(&suite) == true {
                 target_suites = vec![suite];
@@ -843,10 +824,8 @@ See debstrap(8) for more information."
                 );
                 return ExitCode::from(1);
             };
-        } else {
-            if target_suites.contains(&suite) == false {
-                target_suites.push(suite);
-            };
+        } else if target_suites.contains(&suite) == false {
+            target_suites.push(suite);
         };
     }
 
@@ -856,7 +835,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} {:?}",
-            space_and_truncate_string("target suite(s):", 41),
+            space_and_truncate_string("target suite(s):", 47),
             &target_suites
         ),
         &message_config,
@@ -874,21 +853,20 @@ See debstrap(8) for more information."
 
     for component in chosen_components {
         counter += 1;
+
         if counter == 1 {
             if component == "main" {
                 target_components = vec![component];
             } else {
                 print_message(
                     "error",
-                    &format!("invalid first component \"{component}\""),
+                    &format!("invalid first component: \"{component}\""),
                     &message_config,
                 );
                 return ExitCode::from(1);
             };
-        } else {
-            if target_components.contains(&component) == false {
-                target_components.push(component);
-            };
+        } else if target_components.contains(&component) == false {
+            target_components.push(component);
         };
     }
 
@@ -898,7 +876,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} {:?}",
-            space_and_truncate_string("target component(s):", 41),
+            space_and_truncate_string("target component(s):", 47),
             &target_components
         ),
         &message_config,
@@ -1077,7 +1055,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} {:?}",
-            space_and_truncate_string("target architecture(s):", 41),
+            space_and_truncate_string("target architecture(s):", 47),
             target_architectures
         ),
         &message_config,
@@ -1092,7 +1070,7 @@ See debstrap(8) for more information."
                     print_message(
                         "error",
                         &format!(
-                            "architecture \"{architecture}\" is not executable by the host kernel."
+                            "architecture: \"{architecture}\" is not executable by the host kernel."
                         ),
                         &message_config,
                     );
@@ -1143,7 +1121,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{target_variant}\"",
-            space_and_truncate_string("target variant:", 41)
+            space_and_truncate_string("target variant:", 47)
         ),
         &message_config,
     );
@@ -1152,7 +1130,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of packages in custom set:", 41),
+            space_and_truncate_string("no. of packages in custom set:", 47),
             &custom_package_set.len()
         ),
         &message_config,
@@ -1166,7 +1144,7 @@ See debstrap(8) for more information."
     } else if custom_package_set.len() != 0 {
         print_message(
             "error",
-            "only the variant \"custom\" can use a custom package set.",
+            "only the variant: \"custom\" can use a custom package set.",
             &message_config,
         );
         return ExitCode::from(1);
@@ -1178,34 +1156,37 @@ See debstrap(8) for more information."
 
     match &target_output_format as &str {
         "tarball" => {
-            if chosen_output_file_name.is_empty() == true {
-                target_output_file_name = format!(
-                    "{}_{}",
-                    default_output_file_name(
-                        &target_suites[0],
-                        &target_architectures[0],
-                        &target_variant,
-                    ),
-                    run_fun!(date "+%Yy-%mm-%dd").unwrap(),
-                );
-                match &only_action_then_exit as &str {
-                    "download_packages" => {
-                        target_output_file_name = format!("Packages_{target_output_file_name}");
-                    }
-                    "extract_packages" => {
-                        target_output_file_name = format!("Extracted_{target_output_file_name}");
-                    }
-                    _ => {}
-                };
-            } else {
-                target_output_file_name = chosen_output_file_name;
+            match chosen_output_file_name.is_empty() {
+                true => {
+                    target_output_file_name = format!(
+                        "{}_{}",
+                        default_output_file_name(
+                            &target_suites[0],
+                            &target_architectures[0],
+                            &target_variant,
+                        ),
+                        run_fun!(date "+%Yy-%mm-%dd").unwrap(),
+                    );
+
+                    match &only_action_then_exit as &str {
+                        "download_packages" => {
+                            target_output_file_name = format!("Packages_{target_output_file_name}");
+                        }
+                        "extract_packages" => {
+                            target_output_file_name =
+                                format!("Extracted_{target_output_file_name}");
+                        }
+                        _ => {}
+                    };
+                }
+                false => target_output_file_name = chosen_output_file_name,
             };
 
             print_message(
                 "debug",
                 &format!(
                     "{} \"{target_output_file_name}\"",
-                    space_and_truncate_string("target output file name:", 41)
+                    space_and_truncate_string("target output file name:", 47)
                 ),
                 &message_config,
             );
@@ -1272,7 +1253,7 @@ See debstrap(8) for more information."
             "debug",
             &format!(
                 "{} {:?}",
-                space_and_truncate_string("target mirror(s):", 41),
+                space_and_truncate_string("target mirror(s):", 47),
                 &uris_to_print,
             ),
             &message_config,
@@ -1288,9 +1269,6 @@ See debstrap(8) for more information."
     let target_resolver: String;
 
     match &chosen_resolver as &str {
-        //"apt" => {
-        //    target_resolver = String::from("apt");
-        //}
         "internal" => {
             target_resolver = String::from("internal");
         }
@@ -1313,7 +1291,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{target_resolver}\"",
-            space_and_truncate_string("target resolver:", 41)
+            space_and_truncate_string("target resolver:", 47)
         ),
         &message_config,
     );
@@ -1328,7 +1306,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{consider_recommends}\"",
-            space_and_truncate_string("consider recommends:", 41)
+            space_and_truncate_string("consider recommends:", 47)
         ),
         &message_config,
     );
@@ -1364,7 +1342,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{target_extractor}\"",
-            space_and_truncate_string("target extractor:", 41)
+            space_and_truncate_string("target extractor:", 47)
         ),
         &message_config,
     );
@@ -1403,7 +1381,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{extract_only_essentials}\"",
-            space_and_truncate_string("extract only essentials:", 41)
+            space_and_truncate_string("extract only essentials:", 47)
         ),
         &message_config,
     );
@@ -1417,7 +1395,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of packages to consider essential:", 41),
+            space_and_truncate_string("no. of packages to consider essential:", 47),
             &packages_to_consider_essential.len()
         ),
         &message_config,
@@ -1432,7 +1410,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of packages to consider non-essential:", 41),
+            space_and_truncate_string("no. of packages to consider non-essential:", 47),
             &packages_to_consider_non_essential.len()
         ),
         &message_config,
@@ -1493,7 +1471,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{:?}\"",
-            space_and_truncate_string("merge /usr directories:", 41),
+            space_and_truncate_string("merge /usr directories:", 47),
             merge_usr_directories
         ),
         &message_config,
@@ -1520,7 +1498,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{sources_list_format}\"",
-            space_and_truncate_string("sources list format:", 41)
+            space_and_truncate_string("sources list format:", 47)
         ),
         &message_config,
     );
@@ -1537,7 +1515,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{interactive_bootstrap}\"",
-            space_and_truncate_string("interactive bootstrap:", 41)
+            space_and_truncate_string("interactive bootstrap:", 47)
         ),
         &message_config,
     );
@@ -1589,7 +1567,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of packages to include:", 41),
+            space_and_truncate_string("no. of packages to include:", 47),
             &packages_to_include.len()
         ),
         &message_config,
@@ -1605,7 +1583,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of packages to exclude:", 41),
+            space_and_truncate_string("no. of packages to exclude:", 47),
             &packages_to_exclude.len()
         ),
         &message_config,
@@ -1620,7 +1598,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of packages to prohibit:", 41),
+            space_and_truncate_string("no. of packages to prohibit:", 47),
             &packages_to_prohibit.len()
         ),
         &message_config,
@@ -1632,7 +1610,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of download hooks:", 41),
+            space_and_truncate_string("no. of download hooks:", 47),
             &download_hooks.len()
         ),
         &message_config,
@@ -1641,7 +1619,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of extract hooks:", 41),
+            space_and_truncate_string("no. of extract hooks:", 47),
             &extract_hooks.len()
         ),
         &message_config,
@@ -1650,7 +1628,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of essential hooks:", 41),
+            space_and_truncate_string("no. of essential hooks:", 47),
             &essential_hooks.len()
         ),
         &message_config,
@@ -1659,7 +1637,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of target hooks:", 41),
+            space_and_truncate_string("no. of target hooks:", 47),
             &target_hooks.len()
         ),
         &message_config,
@@ -1668,7 +1646,7 @@ See debstrap(8) for more information."
         "debug",
         &format!(
             "{} \"{}\"",
-            space_and_truncate_string("# of done hooks:", 41),
+            space_and_truncate_string("no. of done hooks:", 47),
             &done_hooks.len()
         ),
         &message_config,
@@ -1679,14 +1657,14 @@ See debstrap(8) for more information."
     if Path::new(&workspace_directory).exists() == false {
         print_message(
             "debug",
-            &format!("creating directory \"{workspace_directory}\""),
+            &format!("creating directory: \"{workspace_directory}\""),
             &message_config,
         );
 
         if std::fs::create_dir(&workspace_directory).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create directory \"{workspace_directory}\""),
+                &format!("failed to create directory: \"{workspace_directory}\""),
                 &message_config,
             );
 
@@ -1705,14 +1683,14 @@ See debstrap(8) for more information."
     if discard_output_on_exit == true {
         print_message(
             "debug",
-            &format!("creating directory \"{target_output_directory}\""),
+            &format!("creating directory: \"{target_output_directory}\""),
             &message_config,
         );
 
         if std::fs::create_dir(&target_output_directory).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create directory \"{target_output_directory}\""),
+                &format!("failed to create directory: \"{target_output_directory}\""),
                 &message_config,
             );
 
@@ -1736,14 +1714,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating directory \"{package_lists_directory}\""),
+        &format!("creating directory: \"{package_lists_directory}\""),
         &message_config,
     );
 
     if std::fs::create_dir(&package_lists_directory).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create directory \"{package_lists_directory}\""),
+            &format!("failed to create directory: \"{package_lists_directory}\""),
             &message_config,
         );
 
@@ -2222,14 +2200,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating directory \"{all_packages_directory}\""),
+        &format!("creating directory: \"{all_packages_directory}\""),
         &message_config,
     );
 
     if std::fs::create_dir(&all_packages_directory).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create directory \"{all_packages_directory}\""),
+            &format!("failed to create directory: \"{all_packages_directory}\""),
             &message_config,
         );
 
@@ -2248,14 +2226,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating directory \"{downloaded_packages_directory}\""),
+        &format!("creating directory: \"{downloaded_packages_directory}\""),
         &message_config,
     );
 
     if std::fs::create_dir(&downloaded_packages_directory).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create directory \"{downloaded_packages_directory}\""),
+            &format!("failed to create directory: \"{downloaded_packages_directory}\""),
             &message_config,
         );
 
@@ -2309,7 +2287,7 @@ See debstrap(8) for more information."
             "directory" => {
                 print_message(
                     "debug",
-                    &format!("moving packages from \"{downloaded_packages_directory}\" to \"{target_output_directory}\""),
+                    &format!("moving packages from: \"{downloaded_packages_directory}\" to \"{target_output_directory}\""),
                     &message_config,
                 );
 
@@ -2341,7 +2319,7 @@ See debstrap(8) for more information."
                         print_message(
                             "error",
                             &format!(
-                                "failed to move file \"{downloaded_packages_directory}/{package}\""
+                                "failed to move file: \"{downloaded_packages_directory}/{package}\""
                             ),
                             &message_config,
                         );
@@ -2363,7 +2341,7 @@ See debstrap(8) for more information."
 
                 print_message(
                     "debug",
-                    &format!("creating tarball \"{target_output_directory}/{target_output_file_name}.tar\""),
+                    &format!("creating tarball: \"{target_output_directory}/{target_output_file_name}.tar\""),
                     &message_config,
                 );
 
@@ -2378,7 +2356,7 @@ See debstrap(8) for more information."
                 {
                     print_message(
                         "error",
-                        &format!("failed to create tarball \"{target_output_directory}/{target_output_file_name}.tar\""),
+                        &format!("failed to create tarball: \"{target_output_directory}/{target_output_file_name}.tar\""),
                         &message_config,
                     );
 
@@ -2394,6 +2372,8 @@ See debstrap(8) for more information."
             }
             _ => {}
         };
+
+        println!("Package download complete.");
 
         if clean_up_on_exit(
             &workspace_directory,
@@ -2426,14 +2406,14 @@ See debstrap(8) for more information."
     if Path::new(&target_bootstrap_directory).exists() == false {
         print_message(
             "debug",
-            &format!("creating directory \"{target_bootstrap_directory}\""),
+            &format!("creating directory: \"{target_bootstrap_directory}\""),
             &message_config,
         );
 
         if std::fs::create_dir(&target_bootstrap_directory).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create directory \"{target_bootstrap_directory}\""),
+                &format!("failed to create directory: \"{target_bootstrap_directory}\""),
                 &message_config,
             );
 
@@ -2457,14 +2437,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating directory \"{initial_packages_directory}\""),
+        &format!("creating directory: \"{initial_packages_directory}\""),
         &message_config,
     );
 
     if std::fs::create_dir(&initial_packages_directory).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create directory \"{initial_packages_directory}\""),
+            &format!("failed to create directory: \"{initial_packages_directory}\""),
             &message_config,
         );
 
@@ -2534,7 +2514,7 @@ See debstrap(8) for more information."
         if is_awk_present == false {
             print_message(
                 "error",
-                "no packages that provide \"awk\" are present.",
+                "no packages that provide: \"awk\" are present.",
                 &message_config,
             );
 
@@ -2729,7 +2709,7 @@ See debstrap(8) for more information."
                     print_message(
                         "error",
                         &format!(
-                            "failed to move file \"{downloaded_packages_directory}/{package}\""
+                            "failed to move file: \"{downloaded_packages_directory}/{package}\""
                         ),
                         &message_config,
                     );
@@ -2748,7 +2728,7 @@ See debstrap(8) for more information."
                 if Path::new(&remaining_packages_directory).exists() == false {
                     print_message(
                         "debug",
-                        &format!("creating directory \"{remaining_packages_directory}\""),
+                        &format!("creating directory: \"{remaining_packages_directory}\""),
                         &message_config,
                     );
 
@@ -2756,7 +2736,7 @@ See debstrap(8) for more information."
                         print_message(
                             "error",
                             &format!(
-                                "failed to create directory \"{remaining_packages_directory}\""
+                                "failed to create directory: \"{remaining_packages_directory}\""
                             ),
                             &message_config,
                         );
@@ -2789,7 +2769,7 @@ See debstrap(8) for more information."
                     print_message(
                         "error",
                         &format!(
-                            "failed to move file \"{downloaded_packages_directory}/{package}\""
+                            "failed to move file: \"{downloaded_packages_directory}/{package}\""
                         ),
                         &message_config,
                     );
@@ -2823,7 +2803,7 @@ See debstrap(8) for more information."
             {
                 print_message(
                     "error",
-                    &format!("failed to move file \"{downloaded_packages_directory}/{package}\""),
+                    &format!("failed to move file: \"{downloaded_packages_directory}/{package}\""),
                     &message_config,
                 );
 
@@ -2849,7 +2829,7 @@ See debstrap(8) for more information."
         print_message(
             "debug",
             &format!(
-                "# of initial packages: \"{}\"",
+                "no. of initial packages:   \"{}\"",
                 list_of_initial_packages.len()
             ),
             &message_config,
@@ -2865,7 +2845,7 @@ See debstrap(8) for more information."
             print_message(
                 "debug",
                 &format!(
-                    "# of remaining packages: \"{}\"",
+                    "no. of remaining packages: \"{}\"",
                     list_of_remaining_packages.len(),
                 ),
                 &message_config,
@@ -2875,14 +2855,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("removing directory \"{downloaded_packages_directory}\""),
+        &format!("removing directory: \"{downloaded_packages_directory}\""),
         &message_config,
     );
 
     if std::fs::remove_dir(&downloaded_packages_directory).is_err() == true {
         print_message(
             "error",
-            &format!("failed to remove directory \"{downloaded_packages_directory}\""),
+            &format!("failed to remove directory: \"{downloaded_packages_directory}\""),
             &message_config,
         );
 
@@ -3016,14 +2996,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating directory \"{target_bootstrap_directory}/packages\""),
+        &format!("creating directory: \"{target_bootstrap_directory}/packages\""),
         &message_config,
     );
 
     if std::fs::create_dir(&format!("{target_bootstrap_directory}/packages")).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create directory \"{target_bootstrap_directory}/packages\""),
+            &format!("failed to create directory: \"{target_bootstrap_directory}/packages\""),
             &message_config,
         );
 
@@ -3040,7 +3020,7 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("creating directory \"{target_bootstrap_directory}/packages/initial\""),
+        &format!("creating directory: \"{target_bootstrap_directory}/packages/initial\""),
         &message_config,
     );
 
@@ -3050,7 +3030,7 @@ See debstrap(8) for more information."
         print_message(
             "error",
             &format!(
-                "failed to create directory \"{target_bootstrap_directory}/packages/initial\""
+                "failed to create directory: \"{target_bootstrap_directory}/packages/initial\""
             ),
             &message_config,
         );
@@ -3099,7 +3079,7 @@ See debstrap(8) for more information."
         {
             print_message(
                 "error",
-                &format!("failed to move file \"{initial_packages_directory}/{package}\""),
+                &format!("failed to move file: \"{initial_packages_directory}/{package}\""),
                 &message_config,
             );
 
@@ -3117,14 +3097,14 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("removing directory \"{initial_packages_directory}\""),
+        &format!("removing directory: \"{initial_packages_directory}\""),
         &message_config,
     );
 
     if std::fs::remove_dir(&initial_packages_directory).is_err() == true {
         print_message(
             "error",
-            &format!("failed to remove directory \"{initial_packages_directory}\""),
+            &format!("failed to remove directory: \"{initial_packages_directory}\""),
             &message_config,
         );
 
@@ -3142,7 +3122,7 @@ See debstrap(8) for more information."
     if Path::new(&remaining_packages_directory).exists() == true {
         print_message(
             "debug",
-            &format!("creating directory \"{target_bootstrap_directory}/packages/remaining\""),
+            &format!("creating directory: \"{target_bootstrap_directory}/packages/remaining\""),
             &message_config,
         );
 
@@ -3151,7 +3131,7 @@ See debstrap(8) for more information."
         {
             print_message(
                 "error",
-                &format!("failed to create directory \"{target_bootstrap_directory}/packages/remaining\""),
+                &format!("failed to create directory: \"{target_bootstrap_directory}/packages/remaining\""),
                 &message_config,
             );
 
@@ -3199,7 +3179,7 @@ See debstrap(8) for more information."
             {
                 print_message(
                     "error",
-                    &format!("failed to move file \"{remaining_packages_directory}/{package}\""),
+                    &format!("failed to move file: \"{remaining_packages_directory}/{package}\""),
                     &message_config,
                 );
 
@@ -3217,14 +3197,14 @@ See debstrap(8) for more information."
 
         print_message(
             "debug",
-            &format!("removing directory \"{remaining_packages_directory}\""),
+            &format!("removing directory: \"{remaining_packages_directory}\""),
             &message_config,
         );
 
         if std::fs::remove_dir(&remaining_packages_directory).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to remove directory \"{remaining_packages_directory}\""),
+                &format!("failed to remove directory: \"{remaining_packages_directory}\""),
                 &message_config,
             );
 
@@ -3255,14 +3235,14 @@ See debstrap(8) for more information."
     {
         print_message(
             "debug",
-            &format!("temporarily linking \"{target_bootstrap_directory}/bin/bash\" to \"{target_bootstrap_directory}/bin/sh\""),
+            &format!("temporarily linking: \"{target_bootstrap_directory}/bin/bash\" to \"{target_bootstrap_directory}/bin/sh\""),
             &message_config,
         );
 
         if run_cmd!(ln --symbolic --relative "$target_bootstrap_directory/bin/bash" "$target_bootstrap_directory/bin/sh" 2> /dev/stdout).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create link \"{target_bootstrap_directory}/bin/sh\""),
+                &format!("failed to create link: \"{target_bootstrap_directory}/bin/sh\""),
                 &message_config,
             );
 
@@ -3278,14 +3258,14 @@ See debstrap(8) for more information."
 
         print_message(
             "debug",
-            &format!("temporarily linking \"{target_bootstrap_directory}/bin/bash\" to \"{target_bootstrap_directory}/bin/dash\""),
+            &format!("temporarily linking: \"{target_bootstrap_directory}/bin/bash\" to \"{target_bootstrap_directory}/bin/dash\""),
             &message_config,
         );
 
         if run_cmd!(ln --symbolic --relative "$target_bootstrap_directory/bin/bash" "$target_bootstrap_directory/bin/dash" 2> /dev/stdout).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create link \"{target_bootstrap_directory}/bin/dash\""),
+                &format!("failed to create link: \"{target_bootstrap_directory}/bin/dash\""),
                 &message_config,
             );
 
@@ -3307,14 +3287,14 @@ See debstrap(8) for more information."
     {
         print_message(
             "debug",
-            &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/mawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
+            &format!("temporarily linking: \"{target_bootstrap_directory}/usr/bin/mawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
             &message_config,
         );
 
         if run_cmd!(ln --symbolic --relative "$target_bootstrap_directory/usr/bin/mawk" "$target_bootstrap_directory/usr/bin/awk" 2> /dev/stdout).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create link \"{target_bootstrap_directory}/usr/bin/awk\""),
+                &format!("failed to create link: \"{target_bootstrap_directory}/usr/bin/awk\""),
                 &message_config,
             );
 
@@ -3334,14 +3314,14 @@ See debstrap(8) for more information."
     {
         print_message(
             "debug",
-            &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/original-awk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
+            &format!("temporarily linking: \"{target_bootstrap_directory}/usr/bin/original-awk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
             &message_config,
         );
 
         if run_cmd!(ln --symbolic --relative "$target_bootstrap_directory/usr/bin/original-awk" "$target_bootstrap_directory/usr/bin/awk" 2> /dev/stdout).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create link \"{target_bootstrap_directory}/usr/bin/awk\""),
+                &format!("failed to create link: \"{target_bootstrap_directory}/usr/bin/awk\""),
                 &message_config,
             );
 
@@ -3361,14 +3341,14 @@ See debstrap(8) for more information."
     {
         print_message(
             "debug",
-            &format!("temporarily linking \"{target_bootstrap_directory}/usr/bin/gawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
+            &format!("temporarily linking: \"{target_bootstrap_directory}/usr/bin/gawk\" to \"{target_bootstrap_directory}/usr/bin/awk\""),
             &message_config,
         );
 
         if run_cmd!(ln --symbolic --relative "$target_bootstrap_directory/usr/bin/gawk" "$target_bootstrap_directory/usr/bin/awk" 2> /dev/stdout).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to create link \"{target_bootstrap_directory}/usr/bin/awk\""),
+                &format!("failed to create link: \"{target_bootstrap_directory}/usr/bin/awk\""),
                 &message_config,
             );
 
@@ -3461,7 +3441,7 @@ See debstrap(8) for more information."
             print_message(
                 "error",
                 &format!(
-                    "failed to write to file \"{target_bootstrap_directory}/var/lib/dpkg/arch\""
+                    "failed to write to file: \"{target_bootstrap_directory}/var/lib/dpkg/arch\""
                 ),
                 &message_config,
             );
@@ -3515,7 +3495,7 @@ See debstrap(8) for more information."
         print_message(
             "error",
             &format!(
-                "failed to change permissions of file \"{target_bootstrap_directory}/etc/fstab\""
+                "failed to change permissions of file: \"{target_bootstrap_directory}/etc/fstab\""
             ),
             &message_config,
         );
@@ -3536,7 +3516,7 @@ See debstrap(8) for more information."
         print_message(
             "error",
             &format!(
-                "failed to change permissions of file \"{target_bootstrap_directory}/etc/fstab\""
+                "failed to change permissions of file: \"{target_bootstrap_directory}/etc/fstab\""
             ),
             &message_config,
         );
@@ -3611,7 +3591,7 @@ See debstrap(8) for more information."
                 {
                     print_message(
                         "debug",
-                        &format!("creating directory \"{target_bootstrap_directory}/etc/apt/sources.list.d\""),
+                        &format!("creating directory: \"{target_bootstrap_directory}/etc/apt/sources.list.d\""),
                         &message_config,
                     );
 
@@ -3623,7 +3603,7 @@ See debstrap(8) for more information."
                     {
                         print_message(
                             "error",
-                            &format!("failed to create directory \"{target_bootstrap_directory}/etc/apt/sources.list.d\""),
+                            &format!("failed to create directory: \"{target_bootstrap_directory}/etc/apt/sources.list.d\""),
                             &message_config,
                         );
 
@@ -3717,7 +3697,7 @@ Components: {}
                         {
                             print_message(
                                 "error",
-                                &format!("failed to write to file \"{target_bootstrap_directory}/etc/apt/sources.list\""),
+                                &format!("failed to write to file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
                                 &message_config,
                             );
 
@@ -3750,7 +3730,7 @@ Components: {}
                             {
                                 print_message(
                                     "error",
-                                    &format!("failed to write to file \"{target_bootstrap_directory}/etc/apt/sources.list\""),
+                                    &format!("failed to write to file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
                                     &message_config,
                                 );
 
@@ -3786,7 +3766,7 @@ Components: {}
                         {
                             print_message(
                                 "error",
-                                &format!("failed to write to file \"{target_bootstrap_directory}/etc/apt/sources.list\""),
+                                &format!("failed to write to file: \"{target_bootstrap_directory}/etc/apt/sources.list\""),
                                 &message_config,
                             );
 
@@ -3873,7 +3853,7 @@ Components: {}
                 {
                     print_message(
                         "error",
-                        &format!("failed to create tarball \"{target_output_directory}/{target_output_file_name}.tar\""),
+                        &format!("failed to create tarball: \"{target_output_directory}/{target_output_file_name}.tar\""),
                         &message_config,
                     );
 
@@ -3942,7 +3922,7 @@ Components: {}
     {
         print_message(
             "error",
-            &format!("failed to change permissions of file \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
+            &format!("failed to change permissions of file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
             &message_config,
         );
 
@@ -3992,7 +3972,7 @@ Components: {}
     {
         print_message(
             "error",
-            &format!("failed to rename file \"{start_stop_daemon_location}\""),
+            &format!("failed to rename file: \"{start_stop_daemon_location}\""),
             &message_config,
         );
 
@@ -4031,7 +4011,7 @@ Components: {}
     if run_cmd!(chmod 0755 "$start_stop_daemon_location" 2> /dev/stdout).is_err() == true {
         print_message(
             "error",
-            &format!("failed to change permissions of file \"{start_stop_daemon_location}\""),
+            &format!("failed to change permissions of file: \"{start_stop_daemon_location}\""),
             &message_config,
         );
 
@@ -4083,7 +4063,7 @@ update-alternatives --force --install /bin/dash dash /bin/bash 999
         {
             print_message(
                 "error",
-                &format!("failed to create alternatives for \"{target_bootstrap_directory}/bin/sh\" and \"{target_bootstrap_directory}/bin/dash\""),
+                &format!("failed to create alternatives for: \"{target_bootstrap_directory}/bin/sh\" and \"{target_bootstrap_directory}/bin/dash\""),
                 &message_config,
             );
 
@@ -4127,7 +4107,7 @@ dpkg --force-depends --force-confold --install *.deb
     {
         print_message(
             "error",
-            &format!("failed to install packages in \"{initial_packages_directory}\""),
+            &format!("failed to install packages in: \"{initial_packages_directory}\""),
             &message_config,
         );
 
@@ -4184,7 +4164,7 @@ dpkg --force-depends --force-confold --install *.deb
         {
             print_message(
                 "error",
-                &format!("failed to install packages in \"{remaining_packages_directory}\""),
+                &format!("failed to install packages in: \"{remaining_packages_directory}\""),
                 &message_config,
             );
 
@@ -4240,7 +4220,9 @@ dpkg --force-depends --force-confold --install *.deb
     {
         print_message(
             "error",
-            &format!("failed to remove file \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
+            &format!(
+                "failed to remove file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""
+            ),
             &message_config,
         );
 
@@ -4264,7 +4246,7 @@ dpkg --force-depends --force-confold --install *.deb
     if std::fs::remove_file(format!("{start_stop_daemon_location}")).is_err() == true {
         print_message(
             "error",
-            &format!("failed to remove file \"{start_stop_daemon_location}\""),
+            &format!("failed to remove file: \"{start_stop_daemon_location}\""),
             &message_config,
         );
 
@@ -4294,7 +4276,7 @@ dpkg --force-depends --force-confold --install *.deb
     {
         print_message(
             "error",
-            &format!("failed to rename file \"{start_stop_daemon_location}.ORIGINAL\""),
+            &format!("failed to rename file: \"{start_stop_daemon_location}.ORIGINAL\""),
             &message_config,
         );
 
@@ -4314,20 +4296,20 @@ dpkg --force-depends --force-confold --install *.deb
     if target_actions_to_skip.contains(&String::from("packages_removal")) == true {
         print_message(
             "debug",
-            &format!("not removing directory \"{all_packages_directory}\""),
+            &format!("not removing directory: \"{all_packages_directory}\""),
             &message_config,
         );
     } else {
         print_message(
             "debug",
-            &format!("removing directory \"{all_packages_directory}\""),
+            &format!("removing directory: \"{all_packages_directory}\""),
             &message_config,
         );
 
         if std::fs::remove_dir_all(&all_packages_directory).is_err() == true {
             print_message(
                 "error",
-                &format!("failed to remove directory \"{all_packages_directory}\""),
+                &format!("failed to remove directory: \"{all_packages_directory}\""),
                 &message_config,
             );
 
@@ -4355,7 +4337,7 @@ dpkg --force-depends --force-confold --install *.deb
         {
             print_message(
                 "error",
-                &format!("failed to remove file \"{target_bootstrap_directory}/etc/machine-id\""),
+                &format!("failed to remove file: \"{target_bootstrap_directory}/etc/machine-id\""),
                 &message_config,
             );
 
@@ -4418,7 +4400,7 @@ dpkg --force-depends --force-confold --install *.deb
             print_message(
                 "debug",
                 &format!(
-                    "creating tarball \"{target_output_directory}/{target_output_file_name}.tar\""
+                    "creating tarball: \"{target_output_directory}/{target_output_file_name}.tar\""
                 ),
                 &message_config,
             );
@@ -4435,7 +4417,7 @@ dpkg --force-depends --force-confold --install *.deb
                 print_message(
                     "error",
                     &format!(
-                        "failed to create tarball \"{target_output_directory}/{target_output_file_name}.tar\""
+                        "failed to create tarball: \"{target_output_directory}/{target_output_file_name}.tar\""
                     ),
                     &message_config,
                 );

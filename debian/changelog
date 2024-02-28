@@ -1,5 +1,5 @@
-debstrap (0.0.1) UNRELEASED; urgency=medium
+debstrap (0.0.3) UNRELEASED; urgency=medium
 
   * Initial release. (Closes: #XXXXXX)
 
- -- Stephany Panagaea <>  Sat, 23 Dec 2023 06:52:01 +1100
+ -- Stephany Panagaea <>  Wed, 28 Feb 2024 11:59:21 +1100

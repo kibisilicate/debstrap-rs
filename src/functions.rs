@@ -1145,6 +1145,7 @@ pub fn create_sources_list(
     input_uris: &Vec<(String, String)>,
     input_suites: &Vec<String>,
     input_components: &Vec<String>,
+    sources_signed_by: &str,
     format: &str,
     output_directory: &str,
     message_config: &MessageConfig,
@@ -1171,10 +1172,12 @@ Types: deb deb-src
 URIs: {}
 Suites: {}
 Components: {}
+Signed-By: /usr/share/keyrings/{}
 ",
                     format!("{:?}", &full_uris).replace(['[', ']', '"', ','], ""),
                     format!("{:?}", &input_suites).replace(['[', ']', '"', ','], ""),
                     format!("{:?}", &input_components).replace(['[', ']', '"', ','], ""),
+                    sources_signed_by,
                 ),
                 &message_config,
             )

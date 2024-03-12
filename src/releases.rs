@@ -270,6 +270,32 @@ pub fn default_sources_list_format(suite: &str) -> String {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn default_sources_signed_by(suite: &str, architecture: &str) -> String {
+    let mut keyring_file_name: String = String::new();
+
+    if DEBIAN_CURRENT_SUITES.contains(&suite) == true {
+        match architecture {
+            "amd64" | "arm64" | "armel" | "armhf" | "i386" | "mips64el" | "mipsel" | "ppc64el"
+            | "s390x" => {
+                keyring_file_name = String::from("debian-archive-keyring.gpg");
+            }
+            _ => {
+                keyring_file_name = String::from("debian-ports-archive-keyring.gpg");
+            }
+        };
+    } else if DEBIAN_OBSOLUTE_SUITES.contains(&suite) == true {
+        keyring_file_name = String::from("debian-archive-keyring.gpg");
+    } else if UBUNTU_CURRENT_SUITES.contains(&suite) == true
+        || UBUNTU_OBSOLETE_SUITES.contains(&suite) == true
+    {
+        keyring_file_name = String::from("ubuntu-archive-keyring.gpg");
+    };
+
+    return keyring_file_name;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn default_hostname(suite: &str) -> String {
     let mut hostname: String = String::new();
 

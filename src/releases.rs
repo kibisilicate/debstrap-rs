@@ -124,7 +124,7 @@ pub fn default_uris(suite: &str, architecture: &str) -> Vec<String> {
     if DEBIAN_CURRENT_SUITES.contains(&suite) == true {
         match architecture {
             "amd64" | "arm64" | "armel" | "armhf" | "i386" | "mips64el" | "mipsel" | "ppc64el"
-            | "s390x" => {
+            | "riscv64" | "s390x" => {
                 uris.push(String::from(DEBIAN_CURRENT_MIRROR));
             }
             _ => {
@@ -276,7 +276,7 @@ pub fn default_sources_signed_by(suite: &str, architecture: &str) -> String {
     if DEBIAN_CURRENT_SUITES.contains(&suite) == true {
         match architecture {
             "amd64" | "arm64" | "armel" | "armhf" | "i386" | "mips64el" | "mipsel" | "ppc64el"
-            | "s390x" => {
+            | "riscv64" | "s390x" => {
                 keyring_file_name = String::from("debian-archive-keyring.gpg");
             }
             _ => {

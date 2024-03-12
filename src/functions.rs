@@ -105,14 +105,7 @@ pub fn create_file(
 
 pub fn create_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
     match Path::new(directory_path).exists() {
-        true => {
-            print_message(
-                "error",
-                &format!("directory: \"{directory_path}\" already exists."),
-                &message_config,
-            );
-            return Err(());
-        }
+        true => return Ok(()),
         false => {
             print_message(
                 "debug",

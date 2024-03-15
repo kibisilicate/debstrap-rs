@@ -696,6 +696,8 @@ See debstrap(8) for more information."
 
             match &chosen_output_file_name {
                 file_name if file_name.ends_with(".tar") => {
+                    chosen_output_file_name =
+                        String::from(chosen_output_file_name.strip_suffix(".tar").unwrap());
                     implied_output_format = String::from("tarball");
                 }
                 _ => {
@@ -1154,6 +1156,8 @@ See debstrap(8) for more information."
 
     let mut target_output_file_name: String = String::new();
 
+    let mut output_file_suffix: String = String::new();
+
     match &target_output_format as &str {
         "tarball" => {
             match chosen_output_file_name.is_empty() {
@@ -1182,19 +1186,21 @@ See debstrap(8) for more information."
                 false => target_output_file_name = chosen_output_file_name,
             };
 
-            print_message(
-                "debug",
-                &format!(
-                    "{} \"{target_output_file_name}\"",
-                    space_and_truncate_string("target output file name:", 47)
-                ),
-                &message_config,
-            );
+            output_file_suffix = String::from(".tar");
         }
         _ => {}
     };
 
     let target_output_file_name: String = target_output_file_name;
+
+    print_message(
+        "debug",
+        &format!(
+            "{} \"{target_output_file_name}{output_file_suffix}\"",
+            space_and_truncate_string("target output file name:", 47)
+        ),
+        &message_config,
+    );
 
     //////////////////////////////////////////////
 

@@ -1395,7 +1395,7 @@ See debstrap(8) for more information."
     chosen_packages_to_consider_essential.sort_unstable();
     chosen_packages_to_consider_essential.dedup();
 
-    let mut packages_to_consider_essential: Vec<String> = chosen_packages_to_consider_essential;
+    let packages_to_consider_essential: Vec<String> = chosen_packages_to_consider_essential;
 
     print_message(
         "debug",
@@ -2363,81 +2363,48 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    let initial_packages_directory: String = format!("{all_packages_directory}/initial");
+    let all_package_sub_directories: Vec<String> = Vec::from([
+        String::from("essential"),
+        String::from("required"),
+        String::from("important"),
+        String::from("standard"),
+        String::from("remaining"),
+    ]);
 
-    let remaining_packages_directory: String = format!("{all_packages_directory}/remaining");
-
-    if create_directory(&initial_packages_directory, &message_config).is_err() == true {
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    let mut downloaded_package_file_names: Vec<String> =
-        std::fs::read_dir(&downloaded_packages_directory)
-            .unwrap()
-            .map(|element| {
-                String::from(
-                    element
-                        .unwrap()
-                        .path()
-                        .file_name()
-                        .unwrap()
-                        .to_string_lossy(),
-                )
-            })
-            .collect::<Vec<String>>();
-
-    downloaded_package_file_names.sort_unstable();
+    let essential_packages_directory: String = format!(
+        "{all_packages_directory}/{}",
+        &all_package_sub_directories[0]
+    );
 
     if extract_only_essentials == true {
-        println!("Preparing to extract essentials ...");
+        if separate_packages_by_priority(
+            &package_database,
+            &downloaded_packages_directory,
+            &target_package_set,
+            &packages_to_prohibit,
+            &packages_to_consider_essential,
+            &packages_to_consider_non_essential,
+            &target_extractor,
+            &all_packages_directory,
+            &message_config,
+        )
+        .is_err()
+            == true
+        {
+            print_message("error", "failed to separate packages.", &message_config);
 
-        let mut initial_essential_subset: Vec<Package> = Vec::new();
-
-        let mut is_awk_present: bool = false;
-
-        for package in &target_package_set {
-            if package.is_essential == true {
-                initial_essential_subset.push(package.clone());
-            };
-
-            if is_awk_present == false {
-                match &package.name as &str {
-                    "mawk" => {
-                        packages_to_consider_essential.push(String::from("mawk"));
-                        is_awk_present = true;
-                    }
-                    "original-awk" => {
-                        packages_to_consider_essential.push(String::from("original-awk"));
-                        is_awk_present = true;
-                    }
-                    "gawk" => {
-                        packages_to_consider_essential.push(String::from("gawk"));
-                        is_awk_present = true;
-                    }
-                    _ => {}
-                };
-            };
-
-            if package.name == "usrmerge" {
-                packages_to_consider_essential.push(String::from("usrmerge"));
-            };
-        }
-
-        if is_awk_present == false {
-            print_message(
-                "error",
-                "no packages that provide: \"awk\" are present.",
+            clean_up_on_exit(
+                &workspace_directory,
+                None,
+                &target_actions_to_skip,
                 &message_config,
-            );
+            )
+            .unwrap_or(());
 
+            return ExitCode::from(1);
+        };
+    } else {
+        if create_directory(&essential_packages_directory, &message_config).is_err() == true {
             clean_up_on_exit(
                 &workspace_directory,
                 Some(&target_bootstrap_directory),
@@ -2449,262 +2416,33 @@ See debstrap(8) for more information."
             return ExitCode::from(1);
         };
 
-        packages_to_consider_essential.sort_unstable();
-        packages_to_consider_essential.dedup();
-
-        //////////////////////////////////////////
-
-        if packages_to_consider_essential.len() != 0 {
-            for included in &packages_to_consider_essential {
-                if initial_essential_subset
-                    .iter()
-                    .any(|initial| &initial.name == included)
-                    == true
-                {
-                    print_message(
-                        "debug",
-                        &format!("essential package present: \"{included}\""),
-                        &message_config,
-                    );
-                } else {
-                    let mut is_package_present: bool = false;
-
-                    for package in package_database.values() {
-                        if package[0].name == *included {
-                            initial_essential_subset.push(package[0].clone());
-
-                            print_message(
-                                "debug",
-                                &format!("essential package added:   \"{included}\""),
-                                &message_config,
-                            );
-
-                            is_package_present = true;
-
-                            break;
-                        };
-                    }
-
-                    if is_package_present == false {
-                        print_message(
-                            "error",
-                            &format!("failed to find package: \"{included}\""),
-                            &message_config,
-                        );
-
-                        clean_up_on_exit(
-                            &workspace_directory,
-                            None,
-                            &target_actions_to_skip,
-                            &message_config,
-                        )
-                        .unwrap_or(());
-
-                        return ExitCode::from(1);
-                    };
-                };
-            }
-
-            initial_essential_subset.sort_unstable();
-        };
-
-        if packages_to_consider_non_essential.len() != 0 {
-            for excluded in &packages_to_consider_non_essential {
-                if initial_essential_subset
-                    .iter()
-                    .any(|initial| &initial.name == excluded)
-                    == true
-                {
-                    for (index, initial) in initial_essential_subset.iter_mut().enumerate() {
-                        if initial.name == *excluded {
-                            initial_essential_subset.remove(index);
-
-                            print_message(
-                                "debug",
-                                &format!("essential package removed: \"{excluded}\""),
-                                &message_config,
-                            );
-
-                            break;
-                        };
-                    }
-                } else {
-                    print_message(
-                        "debug",
-                        &format!("essential package absent:  \"{excluded}\""),
-                        &message_config,
-                    );
-                };
-            }
-
-            initial_essential_subset.sort_unstable();
-        };
-
-        let initial_essential_subset: Vec<Package> = initial_essential_subset;
-
-        //////////////////////////////////////////
-
-        print_message("debug", "calculating essential subset.", &message_config);
-
-        let target_essential_subset: Vec<Package>;
-
-        match resolve_dependencies(
-            &package_database,
-            &initial_essential_subset,
-            &consider_recommends,
-            &packages_to_prohibit,
-            &message_config,
-        ) {
-            Ok(result) => {
-                target_essential_subset = result;
-            }
-            Err(..) => {
-                clean_up_on_exit(
-                    &workspace_directory,
-                    None,
-                    &target_actions_to_skip,
-                    &message_config,
-                )
-                .unwrap_or(());
-                return ExitCode::from(1);
-            }
-        };
-
-        //////////////////////////////////////////
-
-        println!("Separating essentials from non-essentials ...");
-
-        for package in &downloaded_package_file_names {
-            let mut package_name: String = String::new();
-
-            match extract_deb_control_field(
-                &target_extractor,
-                &format!("{downloaded_packages_directory}/{package}"),
-                &message_config,
-            ) {
-                Ok(result) => {
-                    for line in result.lines() {
-                        if line.starts_with("Package: ") == true {
-                            package_name = line.replacen("Package: ", "", 1);
-                            break;
-                        };
-                    }
-                }
-                Err(..) => {
-                    clean_up_on_exit(
-                        &workspace_directory,
-                        Some(&target_bootstrap_directory),
-                        &target_actions_to_skip,
-                        &message_config,
+        let mut downloaded_package_file_names: Vec<String> =
+            std::fs::read_dir(&downloaded_packages_directory)
+                .unwrap()
+                .map(|element| {
+                    String::from(
+                        element
+                            .unwrap()
+                            .path()
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy(),
                     )
-                    .unwrap_or(());
+                })
+                .collect::<Vec<String>>();
 
-                    return ExitCode::from(1);
-                }
-            };
+        downloaded_package_file_names.sort_unstable();
 
-            let mut is_package_essential: bool = false;
-
-            for package in &target_essential_subset {
-                if &package.name == &package_name {
-                    is_package_essential = true;
-                    break;
-                };
-            }
-
-            if is_package_essential == true {
-                print_message(
-                    "debug",
-                    &format!("moving essential package: \"{package}\" to \"{initial_packages_directory}\""),
-                    &message_config,
-                );
-
-                if std::fs::rename(
-                    format!("{downloaded_packages_directory}/{package}"),
-                    format!("{initial_packages_directory}/{package}"),
-                )
-                .is_err()
-                    == true
-                {
-                    print_message(
-                        "error",
-                        &format!(
-                            "failed to move file: \"{downloaded_packages_directory}/{package}\""
-                        ),
-                        &message_config,
-                    );
-
-                    clean_up_on_exit(
-                        &workspace_directory,
-                        Some(&target_bootstrap_directory),
-                        &target_actions_to_skip,
-                        &message_config,
-                    )
-                    .unwrap_or(());
-
-                    return ExitCode::from(1);
-                };
-            } else {
-                if Path::new(&remaining_packages_directory).exists() == false {
-                    if create_directory(&remaining_packages_directory, &message_config).is_err()
-                        == true
-                    {
-                        clean_up_on_exit(
-                            &workspace_directory,
-                            Some(&target_bootstrap_directory),
-                            &target_actions_to_skip,
-                            &message_config,
-                        )
-                        .unwrap_or(());
-
-                        return ExitCode::from(1);
-                    };
-                };
-
-                print_message(
-                    "debug",
-                    &format!("moving non-essential package: \"{package}\" to \"{remaining_packages_directory}\""),
-                    &message_config,
-                );
-
-                if std::fs::rename(
-                    format!("{downloaded_packages_directory}/{package}"),
-                    format!("{remaining_packages_directory}/{package}"),
-                )
-                .is_err()
-                    == true
-                {
-                    print_message(
-                        "error",
-                        &format!(
-                            "failed to move file: \"{downloaded_packages_directory}/{package}\""
-                        ),
-                        &message_config,
-                    );
-
-                    clean_up_on_exit(
-                        &workspace_directory,
-                        Some(&target_bootstrap_directory),
-                        &target_actions_to_skip,
-                        &message_config,
-                    )
-                    .unwrap_or(());
-
-                    return ExitCode::from(1);
-                };
-            };
-        }
-    } else {
         for package in &downloaded_package_file_names {
             print_message(
                 "debug",
-                &format!("moving package: \"{package}\" to \"{initial_packages_directory}\""),
+                &format!("moving package: \"{package}\" to \"{essential_packages_directory}\""),
                 &message_config,
             );
 
             if std::fs::rename(
                 format!("{downloaded_packages_directory}/{package}"),
-                format!("{initial_packages_directory}/{package}"),
+                format!("{essential_packages_directory}/{package}"),
             )
             .is_err()
                 == true
@@ -2728,39 +2466,6 @@ See debstrap(8) for more information."
         }
     };
 
-    if print_debug == true {
-        let list_of_initial_packages: Vec<String> = std::fs::read_dir(&initial_packages_directory)
-            .unwrap()
-            .map(|element| String::from(element.unwrap().path().to_string_lossy()))
-            .collect::<Vec<String>>();
-
-        print_message(
-            "debug",
-            &format!(
-                "no. of initial packages:   \"{}\"",
-                list_of_initial_packages.len()
-            ),
-            &message_config,
-        );
-
-        if Path::new(&remaining_packages_directory).exists() == true {
-            let list_of_remaining_packages: Vec<String> =
-                std::fs::read_dir(&remaining_packages_directory)
-                    .unwrap()
-                    .map(|element| String::from(element.unwrap().path().to_string_lossy()))
-                    .collect::<Vec<String>>();
-
-            print_message(
-                "debug",
-                &format!(
-                    "no. of remaining packages: \"{}\"",
-                    list_of_remaining_packages.len(),
-                ),
-                &message_config,
-            );
-        };
-    };
-
     if remove_directory(&downloaded_packages_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
@@ -2771,6 +2476,31 @@ See debstrap(8) for more information."
         .unwrap_or(());
 
         return ExitCode::from(1);
+    };
+
+    if print_debug == true {
+        for directory in &all_package_sub_directories {
+            let mut amount_of_packages: u16 = 0;
+
+            if Path::new(&format!("{all_packages_directory}/{directory}")).exists() == true {
+                let list_of_packages: Vec<String> =
+                    std::fs::read_dir(&format!("{all_packages_directory}/{directory}"))
+                        .unwrap()
+                        .map(|element| String::from(element.unwrap().path().to_string_lossy()))
+                        .collect::<Vec<String>>();
+
+                amount_of_packages = list_of_packages.len() as u16;
+            };
+
+            print_message(
+                "debug",
+                &format!(
+                    "{} \"{amount_of_packages}\"",
+                    space_and_truncate_string(&format!("no. of {directory} packages:"), 26),
+                ),
+                &message_config,
+            );
+        }
     };
 
     //////////////////////////////////////////////
@@ -2802,11 +2532,11 @@ See debstrap(8) for more information."
 
     print_message(
         "debug",
-        &format!("extracting all packages in: \"{initial_packages_directory}\" with \"{target_extractor}\""),
+        &format!("extracting all packages in: \"{essential_packages_directory}\" with \"{target_extractor}\""),
         &message_config,
     );
 
-    let mut packages_to_extract: Vec<String> = std::fs::read_dir(&initial_packages_directory)
+    let mut packages_to_extract: Vec<String> = std::fs::read_dir(&essential_packages_directory)
         .unwrap()
         .map(|element| {
             String::from(
@@ -2869,7 +2599,7 @@ See debstrap(8) for more information."
 
         if extract_deb_data(
             &target_extractor,
-            &format!("{initial_packages_directory}/{package}"),
+            &format!("{essential_packages_directory}/{package}"),
             &target_bootstrap_directory,
             &message_config,
         )
@@ -2909,7 +2639,7 @@ See debstrap(8) for more information."
     };
 
     if create_directory(
-        &format!("{target_bootstrap_directory}/packages/initial"),
+        &format!("{target_bootstrap_directory}/packages/essential"),
         &message_config,
     )
     .is_err()
@@ -2926,123 +2656,15 @@ See debstrap(8) for more information."
         return ExitCode::from(1);
     };
 
-    let mut initial_package_file_names: Vec<String> =
-        std::fs::read_dir(&initial_packages_directory)
-            .unwrap()
-            .map(|element| {
-                String::from(
-                    element
-                        .unwrap()
-                        .path()
-                        .file_name()
-                        .unwrap()
-                        .to_string_lossy(),
-                )
-            })
-            .collect::<Vec<String>>();
-
-    initial_package_file_names.sort_unstable();
-
-    print_message(
-        "debug",
-        &format!("moving packages from: \"{initial_packages_directory}\" to \"{target_bootstrap_directory}/packages/initial\""),
-        &message_config,
-    );
-
-    for package in &initial_package_file_names {
-        if move_file(
-            format!("{initial_packages_directory}/{package}"),
-            format!("{target_bootstrap_directory}/packages/initial/{package}"),
-        )
-        .is_err()
-            == true
-        {
-            print_message(
-                "error",
-                &format!("failed to move file: \"{initial_packages_directory}/{package}\""),
+    for directory in &all_package_sub_directories {
+        if Path::new(&format!("{all_packages_directory}/{directory}")).exists() == true {
+            if create_directory(
+                &format!("{target_bootstrap_directory}/packages/{directory}"),
                 &message_config,
-            );
-
-            clean_up_on_exit(
-                &workspace_directory,
-                Some(&target_bootstrap_directory),
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
-
-            return ExitCode::from(1);
-        };
-    }
-
-    if remove_directory(&initial_packages_directory, &message_config).is_err() == true {
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    if Path::new(&remaining_packages_directory).exists() == true {
-        if create_directory(
-            &format!("{target_bootstrap_directory}/packages/remaining"),
-            &message_config,
-        )
-        .is_err()
-            == true
-        {
-            clean_up_on_exit(
-                &workspace_directory,
-                Some(&target_bootstrap_directory),
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
-
-            return ExitCode::from(1);
-        };
-
-        let mut remaining_package_file_names: Vec<String> =
-            std::fs::read_dir(&remaining_packages_directory)
-                .unwrap()
-                .map(|element| {
-                    String::from(
-                        element
-                            .unwrap()
-                            .path()
-                            .file_name()
-                            .unwrap()
-                            .to_string_lossy(),
-                    )
-                })
-                .collect::<Vec<String>>();
-
-        remaining_package_file_names.sort_unstable();
-
-        print_message(
-            "debug",
-            &format!("moving packages from: \"{remaining_packages_directory}\" to \"{target_bootstrap_directory}/packages/remaining\""),
-            &message_config,
-        );
-
-        for package in &remaining_package_file_names {
-            if move_file(
-                format!("{remaining_packages_directory}/{package}"),
-                format!("{target_bootstrap_directory}/packages/remaining/{package}"),
             )
             .is_err()
                 == true
             {
-                print_message(
-                    "error",
-                    &format!("failed to move file: \"{remaining_packages_directory}/{package}\""),
-                    &message_config,
-                );
-
                 clean_up_on_exit(
                     &workspace_directory,
                     Some(&target_bootstrap_directory),
@@ -3053,26 +2675,79 @@ See debstrap(8) for more information."
 
                 return ExitCode::from(1);
             };
-        }
 
-        if remove_directory(&remaining_packages_directory, &message_config).is_err() == true {
-            clean_up_on_exit(
-                &workspace_directory,
-                Some(&target_bootstrap_directory),
-                &target_actions_to_skip,
+            let mut package_file_names: Vec<String> =
+                std::fs::read_dir(&format!("{all_packages_directory}/{directory}"))
+                    .unwrap()
+                    .map(|element| {
+                        String::from(
+                            element
+                                .unwrap()
+                                .path()
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy(),
+                        )
+                    })
+                    .collect::<Vec<String>>();
+
+            package_file_names.sort_unstable();
+
+            let package_file_names: Vec<String> = package_file_names;
+
+            print_message(
+                "debug",
+                &format!("moving packages from: \"{all_packages_directory}/{directory}\" to \"{target_bootstrap_directory}/packages/{directory}\""),
+                &message_config,
+            );
+
+            for package in &package_file_names {
+                if move_file(
+                    format!("{all_packages_directory}/{directory}/{package}"),
+                    format!("{target_bootstrap_directory}/packages/{directory}/{package}"),
+                )
+                .is_err()
+                    == true
+                {
+                    print_message(
+                        "error",
+                        &format!("failed to move file: \"{all_packages_directory}/{directory}/{package}\""),
+                        &message_config,
+                    );
+
+                    clean_up_on_exit(
+                        &workspace_directory,
+                        Some(&target_bootstrap_directory),
+                        &target_actions_to_skip,
+                        &message_config,
+                    )
+                    .unwrap_or(());
+
+                    return ExitCode::from(1);
+                };
+            }
+
+            if remove_directory(
+                &format!("{all_packages_directory}/{directory}"),
                 &message_config,
             )
-            .unwrap_or(());
+            .is_err()
+                == true
+            {
+                clean_up_on_exit(
+                    &workspace_directory,
+                    Some(&target_bootstrap_directory),
+                    &target_actions_to_skip,
+                    &message_config,
+                )
+                .unwrap_or(());
 
-            return ExitCode::from(1);
+                return ExitCode::from(1);
+            };
         };
-    };
+    }
 
     let all_packages_directory: String = format!("{target_bootstrap_directory}/packages");
-
-    let initial_packages_directory: String = format!("{all_packages_directory}/initial");
-
-    let remaining_packages_directory: String = format!("{all_packages_directory}/remaining");
 
     //////////////////////////////////////////////
 
@@ -3802,104 +3477,68 @@ update-alternatives --force --install /bin/dash dash /bin/bash 999
 
     //////////////////////////////////////////////
 
-    print_message(
-        "debug",
-        &format!("installing all packages in: \"{initial_packages_directory}\""),
-        &message_config,
-    );
-
-    if run_cmd!(
-        chroot "$target_bootstrap_directory" /usr/bin/env --ignore-environment bash -c "
-export HOME='/root'
-export TERM='$term_environment_variable'
-export PATH
-export DEBIAN_FRONTEND='$debian_frontend'
-export DEBCONF_NONINTERACTIVE_SEEN='$debconf_noninteractive_seen'
-export DEBCONF_NOWARNINGS='yes'
-export DPKG_COLORS='$colorful_dpkg'
-
-cd /packages/initial
-
-dpkg --force-depends --force-confold --install *.deb
-" 2> /dev/stdout
-    )
-    .is_err()
-        == true
-    {
-        print_message(
-            "error",
-            &format!("failed to install packages in: \"{initial_packages_directory}\""),
-            &message_config,
-        );
-
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    //////////////////////////////////////////////
-
-    if essential_hooks.len() != 0 {
-        run_hooks(
-            "essential",
-            &essential_hooks,
-            &workspace_directory,
-            Some(&all_packages_directory),
-            Some(&target_bootstrap_directory),
-            &message_config,
-        );
-    };
-
-    //////////////////////////////////////////////
-
-    if Path::new(&remaining_packages_directory).exists() == true {
-        print_message(
-            "debug",
-            &format!("installing all packages in: \"{remaining_packages_directory}\""),
-            &message_config,
-        );
-
-        if run_cmd!(
-            chroot "$target_bootstrap_directory" /usr/bin/env --ignore-environment bash -c "
-export HOME='/root'
-export TERM='$term_environment_variable'
-export PATH
-export DEBIAN_FRONTEND='$debian_frontend'
-export DEBCONF_NONINTERACTIVE_SEEN='$debconf_noninteractive_seen'
-export DEBCONF_NOWARNINGS='yes'
-export DPKG_COLORS='$colorful_dpkg'
-
-cd /packages/remaining
-
-dpkg --force-depends --force-confold --install *.deb
-" 2> /dev/stdout
-        )
-        .is_err()
-            == true
-        {
+    for directory in &all_package_sub_directories {
+        if Path::new(&format!("{all_packages_directory}/{directory}")).exists() == true {
             print_message(
-                "error",
-                &format!("failed to install packages in: \"{remaining_packages_directory}\""),
+                "debug",
+                &format!("installing all packages in: \"{all_packages_directory}/{directory}\""),
                 &message_config,
             );
 
-            clean_up_on_exit(
-                &workspace_directory,
-                Some(&target_bootstrap_directory),
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
+            if run_cmd!(
+                chroot "$target_bootstrap_directory" /usr/bin/env --ignore-environment bash -c "
+export HOME='/root'
+export TERM='$term_environment_variable'
+export PATH
+export DEBIAN_FRONTEND='$debian_frontend'
+export DEBCONF_NONINTERACTIVE_SEEN='$debconf_noninteractive_seen'
+export DEBCONF_NOWARNINGS='yes'
+export DPKG_COLORS='$colorful_dpkg'
 
-            return ExitCode::from(1);
+cd /packages/$directory
+
+dpkg --force-depends --force-confold --install *.deb
+" 2> /dev/stdout
+            )
+            .is_err()
+                == true
+            {
+                print_message(
+                    "error",
+                    &format!(
+                        "failed to install packages in: \"{all_packages_directory}/{directory}\""
+                    ),
+                    &message_config,
+                );
+
+                clean_up_on_exit(
+                    &workspace_directory,
+                    Some(&target_bootstrap_directory),
+                    &target_actions_to_skip,
+                    &message_config,
+                )
+                .unwrap_or(());
+
+                return ExitCode::from(1);
+            };
         };
-    };
+
+        match &directory as &str {
+            "essential" => {
+                if essential_hooks.len() != 0 {
+                    run_hooks(
+                        "essential",
+                        &essential_hooks,
+                        &workspace_directory,
+                        Some(&all_packages_directory),
+                        Some(&target_bootstrap_directory),
+                        &message_config,
+                    );
+                };
+            }
+            _ => {}
+        };
+    }
 
     //////////////////////////////////////////////
 

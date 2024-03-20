@@ -1428,22 +1428,22 @@ See debstrap(8) for more information."
         chosen_merge_usr_directories = String::from("auto");
     };
 
-    let mut merge_usr_directories: Option<String>;
+    let merge_usr_directories: bool;
 
     match &chosen_merge_usr_directories as &str {
         "yes" | "true" => {
-            merge_usr_directories = Some(String::new());
+            merge_usr_directories = true;
         }
         "no" | "false" => {
-            merge_usr_directories = None;
+            merge_usr_directories = false;
         }
         "auto" => {
             match default_merge_usr_directories(&target_suites[0], &target_variant) {
                 true => {
-                    merge_usr_directories = Some(String::new());
+                    merge_usr_directories = true;
                 }
                 false => {
-                    merge_usr_directories = None;
+                    merge_usr_directories = false;
                 }
             };
         }
@@ -1457,22 +1457,6 @@ See debstrap(8) for more information."
         }
     };
 
-    if merge_usr_directories.is_some() == true {
-        match &method_of_usr_merge(&target_suites[0]) as &str {
-            "manual_usr_merge" => {
-                merge_usr_directories = Some(String::from("manual_usr_merge"));
-            }
-            "usrmerge_package" => {
-                merge_usr_directories = Some(String::from("usrmerge_package"));
-
-                chosen_packages_to_include.push(String::from("usrmerge"));
-            }
-            _ => {}
-        };
-    };
-
-    let merge_usr_directories: Option<String> = merge_usr_directories;
-
     print_message(
         "debug",
         &format!(
@@ -1483,8 +1467,7 @@ See debstrap(8) for more information."
         &message_config,
     );
 
-    if merge_usr_directories.is_none() == true && is_split_usr_supported(&target_suites[0]) == false
-    {
+    if merge_usr_directories == false && is_split_usr_supported(&target_suites[0]) == false {
         print_message(
             "warning",
             "upgrading non-merged-/usr environments post-bookworm is unsupported.",
@@ -2505,29 +2488,6 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    if merge_usr_directories == Some(String::from("manual_usr_merge")) {
-        if manually_merge_usr_directories(
-            &target_bootstrap_directory,
-            &target_architectures,
-            &message_config,
-        )
-        .is_err()
-            == true
-        {
-            clean_up_on_exit(
-                &workspace_directory,
-                Some(&target_bootstrap_directory),
-                &target_actions_to_skip,
-                &message_config,
-            )
-            .unwrap_or(());
-
-            return ExitCode::from(1);
-        };
-    };
-
-    //////////////////////////////////////////////
-
     println!("Extracting packages:");
 
     print_message(
@@ -2617,6 +2577,24 @@ See debstrap(8) for more information."
             return ExitCode::from(1);
         };
     }
+
+    //////////////////////////////////////////////
+
+    if merge_usr_directories == true {
+        if manually_merge_usr_directories(&target_bootstrap_directory, &message_config).is_err()
+            == true
+        {
+            clean_up_on_exit(
+                &workspace_directory,
+                Some(&target_bootstrap_directory),
+                &target_actions_to_skip,
+                &message_config,
+            )
+            .unwrap_or(());
+
+            return ExitCode::from(1);
+        };
+    };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3171,7 +3149,7 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    if merge_usr_directories == None && is_split_usr_supported(&target_suites[0]) == false {
+    if merge_usr_directories == false && is_split_usr_supported(&target_suites[0]) == false {
         print_message(
             "debug",
             &format!("creating warning file: \"{target_bootstrap_directory}/etc/unsupported-skip-usrmerge-conversion\""),

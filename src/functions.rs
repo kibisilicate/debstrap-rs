@@ -850,7 +850,10 @@ pub fn separate_packages_by_priority(
     let mut initial_standard_subset: Vec<Package> = Vec::new();
 
     for package in target_package_set {
-        if package.is_essential == true || package.name == "usrmerge" {
+        if package.is_essential == true
+            || package.name == "usr-is-merged"
+            || package.name == "usrmerge"
+        {
             initial_essential_subset.push(package.clone());
         };
 
@@ -1464,104 +1467,79 @@ pub fn extract_deb_data(
 
 pub fn manually_merge_usr_directories(
     bootstrap_directory: &str,
-    architectures: &Vec<String>,
     message_config: &MessageConfig,
 ) -> Result<(), ()> {
-    let mut usr_directories_to_symlink: Vec<&str> = Vec::from(["bin", "lib", "sbin"]);
+    println!("Merging /usr directories ...");
 
-    for architecture in architectures {
-        match architecture as &str {
-            "amd64" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64", "libx32"]);
-            }
-            "i386" => {
-                usr_directories_to_symlink.extend(["lib64", "libx32"]);
-            }
-            "loong64" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64"]);
-            }
-            "mipsel" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64"]);
-            }
-            "mips64el" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64", "libo32"]);
-            }
-            "powerpc" => {
-                usr_directories_to_symlink.push("lib64");
-            }
-            "ppc64" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64"]);
-            }
-            "ppc64el" => {
-                usr_directories_to_symlink.push("lib64");
-            }
-            "s390x" => {
-                usr_directories_to_symlink.push("lib32");
-            }
-            "sparc64" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64"]);
-            }
-            "x32" => {
-                usr_directories_to_symlink.extend(["lib32", "lib64", "libx32"]);
-            }
-            _ => {}
-        };
-    }
+    let usr_directories_to_symlink: Vec<String> = Vec::from([
+        String::from("bin"),
+        String::from("lib"),
+        String::from("lib32"),
+        String::from("lib64"),
+        String::from("libo32"),
+        String::from("libx32"),
+        String::from("sbin"),
+    ]);
 
-    usr_directories_to_symlink.sort_unstable();
-    usr_directories_to_symlink.dedup();
-
-    print_message(
-        "debug",
-        &format!("creating directory: \"{bootstrap_directory}/usr\""),
-        &message_config,
-    );
-
-    if std::fs::create_dir(&format!("{bootstrap_directory}/usr")).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to create directory: \"{bootstrap_directory}/usr\""),
-            &message_config,
-        );
-
-        return Err(());
-    };
-
-    for usr_directory in usr_directories_to_symlink {
-        print_message(
-            "debug",
-            &format!("creating directory: \"{bootstrap_directory}/usr/{usr_directory}\""),
-            &message_config,
-        );
-
-        if std::fs::create_dir(&format!("{bootstrap_directory}/usr/{usr_directory}")).is_err()
-            == true
-        {
+    for directory in &usr_directories_to_symlink {
+        if Path::new(&format!("{bootstrap_directory}/{directory}")).exists() == false {
             print_message(
-                "error",
+                "debug",
                 &format!(
-                    "failed to create directory: \"{bootstrap_directory}/usr/{usr_directory}\""
+                    "directory: \"{bootstrap_directory}/{directory}\" does not exist, skipping."
                 ),
                 &message_config,
             );
-
-            return Err(());
-        };
-
-        print_message(
-            "debug",
-            &format!("linking: \"{bootstrap_directory}/usr/{usr_directory}\" to \"{bootstrap_directory}/{usr_directory}\""),
-            &message_config,
-        );
-
-        if run_cmd!(ln --symbolic --relative "$bootstrap_directory/usr/$usr_directory" "$bootstrap_directory/$usr_directory" 2> /dev/stdout).is_err() == true {
+            continue;
+        } else if Path::new(&format!("{bootstrap_directory}/{directory}")).is_symlink() == true {
             print_message(
-                "error",
-                &format!("failed to create link: \"{bootstrap_directory}/{usr_directory}\""),
+                "debug",
+                &format!("directory: \"{bootstrap_directory}/{directory}\" is already a symlink, skipping."),
+                &message_config,
+            );
+            continue;
+        } else {
+            print_message(
+                "debug",
+                &format!("merging directory: \"{bootstrap_directory}/{directory}\" to \"{bootstrap_directory}/usr/{directory}\""),
                 &message_config,
             );
 
-            return Err(());
+            if run_cmd!(cp --recursive --preserve=all "$bootstrap_directory/$directory" "$bootstrap_directory/usr" 2> /dev/stdout).is_err() == true {
+                print_message(
+                    "error",
+                    &format!("failed to merge directory: \"{bootstrap_directory}/{directory}\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+
+            if run_cmd!(rm --recursive --force "$bootstrap_directory/$directory" 2> /dev/stdout)
+                .is_err()
+                == true
+            {
+                print_message(
+                    "error",
+                    &format!("failed to remove directory: \"{bootstrap_directory}/{directory}\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+
+            print_message(
+                "debug",
+                &format!("linking: \"{bootstrap_directory}/usr/{directory}\" to \"{bootstrap_directory}/{directory}\""),
+                &message_config,
+            );
+
+            if run_cmd!(ln --symbolic --relative "$bootstrap_directory/usr/$directory" "$bootstrap_directory/$directory" 2> /dev/stdout).is_err() == true {
+                print_message(
+                    "error",
+                    &format!("failed to create link: \"{bootstrap_directory}/{directory}\""),
+                    &message_config,
+                );
+                return Err(());
+            };
         };
     }
 

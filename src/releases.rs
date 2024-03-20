@@ -212,26 +212,6 @@ pub fn default_merge_usr_directories(suite: &str, variant: &str) -> bool {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub fn method_of_usr_merge(suite: &str) -> String {
-    let merge_method: String;
-
-    match suite as &str {
-        "bookworm" | "bullseye" | "buster" | "stretch" | "jessie" | "hirsute" | "groovy"
-        | "focal" | "eoan" | "disco" | "cosmic" | "bionic" | "artful" | "zesty" | "yakkety"
-        | "xenial" | "wily" | "vivid" | "utopic" | "trusty" | "saucy" | "raring" | "quantal"
-        | "precise" => {
-            merge_method = String::from("manual_usr_merge");
-        }
-        _ => {
-            merge_method = String::from("usrmerge_package");
-        }
-    };
-
-    return merge_method;
-}
-
-//////////////////////////////////////////////////
-
 pub fn is_split_usr_supported(suite: &str) -> bool {
     let is_supported: bool;
 

@@ -255,6 +255,7 @@ See debstrap(8) for more information."
     let mut chosen_actions_to_skip: Vec<String> = Vec::new();
     let mut chosen_output_location: String = String::new();
     let mut chosen_output_format: String = String::new();
+    let mut chosen_sources_file_location: String = String::new();
     let mut chosen_suites: Vec<String> = Vec::new();
     let mut chosen_components: Vec<String> = Vec::new();
     let mut chosen_architectures: Vec<String> = Vec::new();
@@ -307,6 +308,17 @@ See debstrap(8) for more information."
             }
             _ if argument.starts_with("--format=") => {
                 chosen_output_format = String::from(argument.replacen("--format=", "", 1).trim());
+            }
+            _ if argument.starts_with("-s=") => {
+                chosen_sources_file_location = String::from(argument.replacen("-s=", "", 1).trim());
+            }
+            _ if argument.starts_with("--source=") => {
+                chosen_sources_file_location =
+                    String::from(argument.replacen("--source=", "", 1).trim());
+            }
+            _ if argument.starts_with("--sources=") => {
+                chosen_sources_file_location =
+                    String::from(argument.replacen("--sources=", "", 1).trim());
             }
             _ if argument.starts_with("-r=") => {
                 chosen_suites.extend(parse_list_of_values("-r=", &argument));
@@ -800,6 +812,96 @@ See debstrap(8) for more information."
             };
         }
     };
+
+    //////////////////////////////////////////////
+
+    let mut target_sources_file: String = String::new();
+
+    if chosen_sources_file_location.is_empty() == false {
+        if chosen_suites.len() != 0 || chosen_components.len() != 0 || chosen_uris.len() != 0 {
+            print_message(
+                "warning",
+                "ignoring provided suite(s), component(s), and URI(s)",
+                &message_config,
+            );
+
+            chosen_suites = Vec::new();
+            chosen_components = Vec::new();
+            chosen_uris = Vec::new();
+        };
+
+        match Path::new(&chosen_sources_file_location).canonicalize() {
+            Ok(result) => {
+                let result: String = String::from(result.to_string_lossy());
+
+                match &result as &str {
+                    _ if result.ends_with(".sources") => {
+                        target_sources_file = result;
+                    }
+                    _ => {
+                        print_message(
+                            "error",
+                            &format!("invalid sources file: \"{chosen_sources_file_location}\""),
+                            &message_config,
+                        );
+                        return ExitCode::from(1);
+                    }
+                };
+            }
+            Err(..) => {
+                print_message(
+                    "error",
+                    &format!("sources file: \"{chosen_sources_file_location}\" does not exist."),
+                    &message_config,
+                );
+                return ExitCode::from(1);
+            }
+        };
+
+        match std::fs::read_to_string(&target_sources_file) {
+            Ok(result) => {
+                let sources_entries: Vec<String> = result
+                    .trim()
+                    .split("\n\n")
+                    .map(|element| String::from(element))
+                    .collect::<Vec<String>>();
+
+                for line in sources_entries[0].lines() {
+                    match &line as &str {
+                        _ if line.starts_with("URIs: ") => {
+                            chosen_uris = parse_list_of_values("URIs: ", &line);
+                        }
+                        _ if line.starts_with("Suites: ") => {
+                            chosen_suites = parse_list_of_values("Suites: ", &line);
+                        }
+                        _ if line.starts_with("Components: ") => {
+                            chosen_components = parse_list_of_values("Components: ", &line);
+                        }
+                        _ => {}
+                    };
+                }
+            }
+            Err(..) => {
+                print_message(
+                    "error",
+                    &format!("failed to read sources file: \"{target_sources_file}\""),
+                    &message_config,
+                );
+                return ExitCode::from(1);
+            }
+        };
+    };
+
+    let target_sources_file: String = target_sources_file;
+
+    print_message(
+        "debug",
+        &format!(
+            "{} \"{target_sources_file}\"",
+            space_and_truncate_string("target sources file:", 47)
+        ),
+        &message_config,
+    );
 
     //////////////////////////////////////////////
 

@@ -1,6 +1,5 @@
-use crate::functions::print_message;
-use crate::functions::MessageConfig;
-use crate::package::Package;
+use crate::functions::*;
+use crate::package::*;
 
 use std::collections::HashMap;
 

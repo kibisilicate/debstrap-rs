@@ -1,5 +1,5 @@
-use crate::algorithms::resolve_dependencies;
-use crate::package::Package;
+use crate::algorithms::*;
+use crate::package::*;
 
 use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
@@ -60,6 +60,19 @@ pub fn print_message(kind: &str, message: &str, message_config: &MessageConfig) 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn parse_list_of_values(prefix: &str, input: &str) -> Vec<String> {
+    let value: Vec<String> = input
+        .replacen(prefix, "", 1)
+        .replace(",", " ")
+        .split_whitespace()
+        .map(|element| String::from(element.trim()))
+        .collect::<Vec<String>>();
+
+    return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn space_and_truncate_string(input_string: &str, output_length: u16) -> String {
     let mut output_string: String = String::from(input_string);
 
@@ -99,6 +112,41 @@ pub fn create_file(
         );
         return Err(());
     };
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn append_file(
+    file_path: &str,
+    file_contents: &str,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(file_path)
+    {
+        Ok(mut result) => {
+            if result.write_all(file_contents.as_bytes()).is_err() == true {
+                print_message(
+                    "error",
+                    &format!("failed to write to file: \"{file_path}\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+        }
+        Err(..) => {
+            print_message(
+                "error",
+                &format!("failed to open file: \"{file_path}\""),
+                &message_config,
+            );
+            return Err(());
+        }
+    }
 
     return Ok(());
 }
@@ -1628,22 +1676,14 @@ Signed-By: /usr/share/keyrings/{}
                 mirror_counter += 1;
 
                 if mirror_counter != 1 {
-                    if std::fs::OpenOptions::new()
-                        .write(true)
-                        .append(true)
-                        .open(format!("{output_directory}/sources.list"))
-                        .unwrap()
-                        .write_all(b"\n")
-                        .is_err()
+                    if append_file(
+                        &format!("{output_directory}/sources.list"),
+                        "\n",
+                        &message_config,
+                    )
+                    .is_err()
                         == true
                     {
-                        print_message(
-                            "error",
-                            &format!(
-                                "failed to write to file: \"{output_directory}/sources.list\""
-                            ),
-                            &message_config,
-                        );
                         return Err(());
                     };
                 };
@@ -1654,51 +1694,32 @@ Signed-By: /usr/share/keyrings/{}
                     suite_counter += 1;
 
                     if suite_counter != 1 {
-                        if std::fs::OpenOptions::new()
-                            .write(true)
-                            .append(true)
-                            .open(format!("{output_directory}/sources.list"))
-                            .unwrap()
-                            .write_all(b"\n")
-                            .is_err()
+                        if append_file(
+                            &format!("{output_directory}/sources.list"),
+                            "\n",
+                            &message_config,
+                        )
+                        .is_err()
                             == true
                         {
-                            print_message(
-                                "error",
-                                &format!(
-                                    "failed to write to file: \"{output_directory}/sources.list\""
-                                ),
-                                &message_config,
-                            );
                             return Err(());
                         };
                     };
 
-                    if std::fs::OpenOptions::new()
-                        .write(true)
-                        .append(true)
-                        .open(format!("{output_directory}/sources.list"))
-                        .unwrap()
-                        .write_all(
-                            format!(
-                                "deb-src {mirror} {suite} {}\ndeb {mirror} {suite} {}\n",
-                                format!("{:?}", &input_components)
-                                    .replace(['[', ']', '"', ','], ""),
-                                format!("{:?}", &input_components)
-                                    .replace(['[', ']', '"', ','], "")
-                            )
-                            .as_bytes(),
-                        )
-                        .is_err()
+                    if append_file(
+                        &format!("{output_directory}/sources.list"),
+                        &format!(
+                            "deb-src {mirror} {suite} {}\ndeb {mirror} {suite} {}\n",
+                            format!("{:?}", &input_components)
+                                .replace(['[', ']', '"', ','], ""),
+                            format!("{:?}", &input_components)
+                                .replace(['[', ']', '"', ','], ""),
+                        ),
+                        &message_config,
+                    )
+                    .is_err()
                         == true
                     {
-                        print_message(
-                            "error",
-                            &format!(
-                                "failed to write to file: \"{output_directory}/sources.list\""
-                            ),
-                            &message_config,
-                        );
                         return Err(());
                     };
                 }

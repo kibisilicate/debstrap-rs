@@ -240,17 +240,6 @@ See debstrap(8) for more information."
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    fn parse_list_of_values(prefix: &str, input: &str) -> Vec<String> {
-        let value: Vec<String> = input
-            .replacen(prefix, "", 1)
-            .replace(",", " ")
-            .split_whitespace()
-            .map(|element| String::from(element.trim()))
-            .collect::<Vec<String>>();
-
-        return value;
-    }
-
     let mut chosen_only_action_then_exit: String = String::new();
     let mut chosen_actions_to_skip: Vec<String> = Vec::new();
     let mut chosen_output_location: String = String::new();
@@ -3032,23 +3021,14 @@ See debstrap(8) for more information."
             &message_config,
         );
 
-        if std::fs::OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(format!("{target_bootstrap_directory}/var/lib/dpkg/arch"))
-            .unwrap()
-            .write_all(format!("{architecture}\n").as_bytes())
-            .is_err()
+        if append_file(
+            &format!("{target_bootstrap_directory}/var/lib/dpkg/arch"),
+            &format!("{architecture}\n"),
+            &message_config,
+        )
+        .is_err()
             == true
         {
-            print_message(
-                "error",
-                &format!(
-                    "failed to write to file: \"{target_bootstrap_directory}/var/lib/dpkg/arch\""
-                ),
-                &message_config,
-            );
-
             clean_up_on_exit(
                 &workspace_directory,
                 Some(&target_bootstrap_directory),

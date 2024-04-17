@@ -6,6 +6,8 @@ use package::*;
 pub mod package;
 use releases::*;
 pub mod releases;
+use sources::*;
+pub mod sources;
 
 use cmd_lib::{run_cmd, run_fun};
 use rand::distributions::Alphanumeric;
@@ -244,7 +246,7 @@ See debstrap(8) for more information."
     let mut chosen_actions_to_skip: Vec<String> = Vec::new();
     let mut chosen_output_location: String = String::new();
     let mut chosen_output_format: String = String::new();
-    let mut chosen_sources_file_location: String = String::new();
+    let mut chosen_sources_location: String = String::new();
     let mut chosen_suites: Vec<String> = Vec::new();
     let mut chosen_components: Vec<String> = Vec::new();
     let mut chosen_architectures: Vec<String> = Vec::new();
@@ -299,14 +301,10 @@ See debstrap(8) for more information."
                 chosen_output_format = String::from(argument.replacen("--format=", "", 1).trim());
             }
             _ if argument.starts_with("-s=") => {
-                chosen_sources_file_location = String::from(argument.replacen("-s=", "", 1).trim());
-            }
-            _ if argument.starts_with("--source=") => {
-                chosen_sources_file_location =
-                    String::from(argument.replacen("--source=", "", 1).trim());
+                chosen_sources_location = String::from(argument.replacen("-s=", "", 1).trim());
             }
             _ if argument.starts_with("--sources=") => {
-                chosen_sources_file_location =
+                chosen_sources_location =
                     String::from(argument.replacen("--sources=", "", 1).trim());
             }
             _ if argument.starts_with("-r=") => {
@@ -804,360 +802,248 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    let mut target_sources_file: String = String::new();
+    let using_sources_file: bool;
 
-    if chosen_sources_file_location.is_empty() == false {
-        if chosen_suites.len() != 0 || chosen_components.len() != 0 || chosen_uris.len() != 0 {
-            print_message(
-                "warning",
-                "ignoring provided suite(s), component(s), and URI(s)",
-                &message_config,
+    if chosen_sources_location.is_empty() == true {
+        match std::env::var("DEBSTRAP_SOURCES") {
+            Ok(result) => {
+                chosen_sources_location = String::from(result);
+                using_sources_file = true;
+            }
+            Err(..) => {
+                using_sources_file = false;
+            }
+        };
+    } else {
+        using_sources_file = true;
+    };
+
+    let mut sources_list: Vec<SourcesEntry> = Vec::new();
+
+    match using_sources_file {
+        true => {
+            if chosen_suites.len() != 0
+                || chosen_components.len() != 0
+                || chosen_architectures.len() != 0
+                || chosen_uris.len() != 0
+            {
+                print_message(
+                    "warning",
+                    "ignoring provided suite(s), component(s), architecture(s), and URI(s)",
+                    &message_config,
+                );
+            };
+
+            while chosen_sources_location.contains("//") == true {
+                chosen_sources_location = chosen_sources_location.replace("//", "/");
+            }
+
+            chosen_sources_location = String::from(
+                Path::new(&chosen_sources_location)
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
             );
 
-            chosen_suites = Vec::new();
-            chosen_components = Vec::new();
-            chosen_uris = Vec::new();
-        };
+            if chosen_sources_location.ends_with("/") == true {
+                chosen_sources_location =
+                    String::from(chosen_sources_location.strip_suffix("/").unwrap());
+            };
 
-        match Path::new(&chosen_sources_file_location).canonicalize() {
-            Ok(result) => {
-                let result: String = String::from(result.to_string_lossy());
+            let mut target_sources_files: Vec<String> = Vec::new();
 
-                match &result as &str {
-                    _ if result.ends_with(".sources") => {
-                        target_sources_file = result;
+            if Path::new(&chosen_sources_location).is_dir() == true {
+                let mut potential_sources_files: Vec<String> =
+                    std::fs::read_dir(&chosen_sources_location)
+                        .unwrap()
+                        .map(|element| String::from(element.unwrap().path().to_string_lossy()))
+                        .collect::<Vec<String>>();
+
+                potential_sources_files.sort_unstable();
+
+                for entry in potential_sources_files {
+                    if Path::new(&entry).is_file() == true {
+                        match entry {
+                            _ if entry.ends_with(".sources") => {
+                                target_sources_files.push(entry);
+                            }
+                            _ => {
+                                print_message(
+                                    "debug",
+                                    &format!("ignoring file: \"{entry}\""),
+                                    &message_config,
+                                );
+                            }
+                        };
+                    };
+                }
+            } else if Path::new(&chosen_sources_location).is_file() == true {
+                if chosen_sources_location.ends_with(".sources") == true {
+                    target_sources_files.push(String::from(chosen_sources_location));
+                } else {
+                    print_message(
+                        "error",
+                        &format!("invalid sources file: \"{chosen_sources_location}\""),
+                        &message_config,
+                    );
+                    return ExitCode::from(1);
+                };
+            } else {
+                print_message(
+                    "error",
+                    &format!("invalid sources location: \"{chosen_sources_location}\""),
+                    &message_config,
+                );
+                return ExitCode::from(1);
+            };
+
+            for file in &target_sources_files {
+                match parse_sources_file(file, &message_config) {
+                    Ok(result) => {
+                        sources_list.extend(result);
                     }
-                    _ => {
-                        print_message(
-                            "error",
-                            &format!("invalid sources file: \"{chosen_sources_file_location}\""),
-                            &message_config,
-                        );
+                    Err(..) => {
                         return ExitCode::from(1);
                     }
                 };
             }
-            Err(..) => {
-                print_message(
-                    "error",
-                    &format!("sources file: \"{chosen_sources_file_location}\" does not exist."),
-                    &message_config,
-                );
-                return ExitCode::from(1);
+        }
+        false => {
+            let mut is_keyword_host_present: bool = false;
+
+            for architecture in chosen_architectures.iter_mut() {
+                if architecture == &"host" {
+                    is_keyword_host_present = true;
+                    *architecture = String::new();
+                };
             }
-        };
 
-        match std::fs::read_to_string(&target_sources_file) {
-            Ok(result) => {
-                let sources_entries: Vec<String> = result
-                    .trim()
-                    .split("\n\n")
-                    .map(|element| String::from(element))
-                    .collect::<Vec<String>>();
+            if target_actions_to_skip.contains(&String::from("architecture_check")) == false
+                || is_keyword_host_present == true
+            {
+                if which("arch-test").is_err() == true {
+                    print_message(
+                        "error",
+                        "arch-test is not available on the host.",
+                        &message_config,
+                    );
+                    return ExitCode::from(1);
+                };
+            };
 
-                for line in sources_entries[0].lines() {
-                    match &line as &str {
-                        _ if line.starts_with("URIs: ") => {
-                            chosen_uris = parse_list_of_values("URIs: ", &line);
-                        }
-                        _ if line.starts_with("Suites: ") => {
-                            chosen_suites = parse_list_of_values("Suites: ", &line);
-                        }
-                        _ if line.starts_with("Components: ") => {
-                            chosen_components = parse_list_of_values("Components: ", &line);
-                        }
-                        _ => {}
-                    };
+            if is_keyword_host_present == true {
+                chosen_architectures.sort_unstable();
+                chosen_architectures.dedup();
+
+                while chosen_architectures.contains(&String::new()) == true {
+                    chosen_architectures.remove(0);
                 }
-            }
-            Err(..) => {
-                print_message(
-                    "error",
-                    &format!("failed to read sources file: \"{target_sources_file}\""),
-                    &message_config,
+
+                let remaining_architectures: Vec<String> = chosen_architectures;
+
+                chosen_architectures = vec![run_fun!(uname "--machine").unwrap()];
+
+                chosen_architectures.extend(
+                    String::from(run_fun!("arch-test" "-n").unwrap())
+                        .split_whitespace()
+                        .map(|element| String::from(element))
+                        .collect::<Vec<String>>(),
                 );
-                return ExitCode::from(1);
-            }
-        };
-    };
 
-    let target_sources_file: String = target_sources_file;
-
-    print_message(
-        "debug",
-        &format!(
-            "{} \"{target_sources_file}\"",
-            space_and_truncate_string("target sources file:", 47)
-        ),
-        &message_config,
-    );
-
-    //////////////////////////////////////////////
-
-    if chosen_suites.len() == 0 {
-        print_message("error", "no suite(s) were provided.", &message_config);
-        return ExitCode::from(1);
-    };
-
-    let mut target_suites: Vec<String> = Vec::new();
-
-    let mut counter: u8 = 0;
-
-    for suite in chosen_suites {
-        counter += 1;
-
-        if counter == 1 {
-            if check_primary_suite(&suite) == true {
-                target_suites = vec![suite];
-            } else {
-                print_message(
-                    "error",
-                    &format!("unrecognized suite: \"{suite}\""),
-                    &message_config,
-                );
-                return ExitCode::from(1);
+                chosen_architectures.extend(remaining_architectures);
             };
-        } else if target_suites.contains(&suite) == false {
-            target_suites.push(suite);
-        };
-    }
 
-    let target_suites: Vec<String> = target_suites;
-
-    print_message(
-        "debug",
-        &format!(
-            "{} {:?}",
-            space_and_truncate_string("target suite(s):", 47),
-            &target_suites
-        ),
-        &message_config,
-    );
-
-    //////////////////////////////////////////////
-
-    if chosen_components.len() == 0 {
-        chosen_components = vec![String::from("main")];
-    };
-
-    let mut target_components: Vec<String> = Vec::new();
-
-    let mut counter: u8 = 0;
-
-    for component in chosen_components {
-        counter += 1;
-
-        if counter == 1 {
-            if component == "main" {
-                target_components = vec![component];
-            } else {
-                print_message(
-                    "error",
-                    &format!("invalid first component: \"{component}\""),
-                    &message_config,
-                );
-                return ExitCode::from(1);
+            match create_sources_list(
+                &chosen_suites,
+                &chosen_components,
+                &chosen_architectures,
+                &chosen_uris,
+                &message_config,
+            ) {
+                Ok(result) => {
+                    sources_list = result;
+                }
+                Err(..) => {
+                    return ExitCode::from(1);
+                }
             };
-        } else if target_components.contains(&component) == false {
-            target_components.push(component);
-        };
-    }
-
-    let target_components: Vec<String> = target_components;
-
-    print_message(
-        "debug",
-        &format!(
-            "{} {:?}",
-            space_and_truncate_string("target component(s):", 47),
-            &target_components
-        ),
-        &message_config,
-    );
-
-    //////////////////////////////////////////////
-
-    // If no architecture(s) is provided then assume the same as the host.
-
-    if chosen_architectures.len() == 0 {
-        chosen_architectures.push(String::from(run_fun!(uname "--machine").unwrap()));
+        }
     };
 
-    let mut is_keyword_host_present: bool = false;
+    let sources_list: Vec<SourcesEntry> = sources_list;
 
-    for architecture in chosen_architectures.iter_mut() {
-        if architecture == &"host" {
-            is_keyword_host_present = true;
-            *architecture = String::new();
-        };
-    }
+    let primary_suite: String = String::from(sources_list[0].suites[0].clone());
+    let primary_architecture: String = String::from(sources_list[0].architectures[0].clone());
 
-    if target_actions_to_skip.contains(&String::from("architecture_check")) == false
-        || is_keyword_host_present == true
-    {
-        if which("arch-test").is_err() == true {
+    if message_config.debug == true {
+        for (index, entry) in sources_list.iter().enumerate() {
             print_message(
-                "error",
-                "arch-test is not available on the host.",
+                "debug",
+                &format!("sources list entry no. {}", index + 1),
                 &message_config,
             );
-            return ExitCode::from(1);
-        };
-    };
 
-    if is_keyword_host_present == true {
-        chosen_architectures.sort_unstable();
-        chosen_architectures.dedup();
+            let mut full_uris: Vec<String> = Vec::new();
 
-        while chosen_architectures.contains(&String::new()) == true {
-            chosen_architectures.remove(0);
+            for (scheme, path) in &entry.uris {
+                full_uris.push(format!("{scheme}{path}"));
+            }
+
+            print_message(
+                "debug",
+                &format!(
+                    "{} {:?}",
+                    space_and_truncate_string("entries URI(s):", 47),
+                    &full_uris
+                ),
+                &message_config,
+            );
+            print_message(
+                "debug",
+                &format!(
+                    "{} {:?}",
+                    space_and_truncate_string("entries suite(s):", 47),
+                    &entry.suites
+                ),
+                &message_config,
+            );
+            print_message(
+                "debug",
+                &format!(
+                    "{} {:?}",
+                    space_and_truncate_string("entries component(s):", 47),
+                    &entry.components
+                ),
+                &message_config,
+            );
+            print_message(
+                "debug",
+                &format!(
+                    "{} {:?}",
+                    space_and_truncate_string("entries architecture(s):", 47),
+                    &entry.architectures
+                ),
+                &message_config,
+            );
         }
-
-        let remaining_architectures: Vec<String> = chosen_architectures;
-
-        chosen_architectures = vec![run_fun!(uname "--machine").unwrap()];
-
-        chosen_architectures.extend(
-            String::from(run_fun!("arch-test" "-n").unwrap())
-                .split_whitespace()
-                .map(|element| String::from(element))
-                .collect::<Vec<String>>(),
-        );
-
-        chosen_architectures.extend(remaining_architectures);
     };
 
-    let mut target_architectures: Vec<String> = Vec::new();
+    let mut list_of_target_architectures: Vec<String> = Vec::new();
 
-    for architecture in &chosen_architectures {
-        match &architecture.to_lowercase().replace("-", "_") as &str {
-            "alpha" => {
-                if target_architectures.contains(&String::from("alpha")) == false {
-                    target_architectures.push(String::from("alpha"));
-                };
-            }
-            "amd64" | "x86_64" | "x64" => {
-                if target_architectures.contains(&String::from("amd64")) == false {
-                    target_architectures.push(String::from("amd64"));
-                };
-            }
-            "arm64" | "aarch64" => {
-                if target_architectures.contains(&String::from("arm64")) == false {
-                    target_architectures.push(String::from("arm64"));
-                };
-            }
-            "armel" => {
-                if target_architectures.contains(&String::from("armel")) == false {
-                    target_architectures.push(String::from("armel"));
-                };
-            }
-            "armhf" | "aarch32" | "armv7l" => {
-                if target_architectures.contains(&String::from("armhf")) == false {
-                    target_architectures.push(String::from("armhf"));
-                };
-            }
-            "hppa" | "parisc" => {
-                if target_architectures.contains(&String::from("hppa")) == false {
-                    target_architectures.push(String::from("hppa"));
-                };
-            }
-            "i386" | "i686" | "ia32" | "x86" | "x86_32" => {
-                if target_architectures.contains(&String::from("i386")) == false {
-                    target_architectures.push(String::from("i386"));
-                };
-            }
-            "ia64" => {
-                if target_architectures.contains(&String::from("ia64")) == false {
-                    target_architectures.push(String::from("ia64"));
-                };
-            }
-            "loong64" | "loongarch64" => {
-                if target_architectures.contains(&String::from("loong64")) == false {
-                    target_architectures.push(String::from("loong64"));
-                };
-            }
-            "m68k" => {
-                if target_architectures.contains(&String::from("m68k")) == false {
-                    target_architectures.push(String::from("m68k"));
-                };
-            }
-            "mips64el" | "mips64" => {
-                if target_architectures.contains(&String::from("mips64el")) == false {
-                    target_architectures.push(String::from("mips64el"));
-                };
-            }
-            "mipsel" | "mips" => {
-                if target_architectures.contains(&String::from("mipsel")) == false {
-                    target_architectures.push(String::from("mipsel"));
-                };
-            }
-            "powerpc" | "ppc" => {
-                if target_architectures.contains(&String::from("powerpc")) == false {
-                    target_architectures.push(String::from("powerpc"));
-                };
-            }
-            "ppc64" => {
-                if target_architectures.contains(&String::from("ppc64")) == false {
-                    target_architectures.push(String::from("ppc64"));
-                };
-            }
-            "ppc64el" | "ppc64le" | "powerpc64le" => {
-                if target_architectures.contains(&String::from("ppc64el")) == false {
-                    target_architectures.push(String::from("ppc64el"));
-                };
-            }
-            "riscv64" => {
-                if target_architectures.contains(&String::from("riscv64")) == false {
-                    target_architectures.push(String::from("riscv64"));
-                };
-            }
-            "s390x" => {
-                if target_architectures.contains(&String::from("s390x")) == false {
-                    target_architectures.push(String::from("s390x"));
-                };
-            }
-            "sh4" => {
-                if target_architectures.contains(&String::from("sh4")) == false {
-                    target_architectures.push(String::from("sh4"));
-                };
-            }
-            "sparc64" => {
-                if target_architectures.contains(&String::from("sparc64")) == false {
-                    target_architectures.push(String::from("sparc64"));
-                };
-            }
-            "x32" => {
-                if target_architectures.contains(&String::from("x32")) == false {
-                    target_architectures.push(String::from("x32"));
-                };
-            }
-            _ => {
-                print_message(
-                    "error",
-                    &format!("unrecognized architecture: \"{architecture}\""),
-                    &message_config,
-                );
-                return ExitCode::from(1);
-            }
-        };
+    for entry in &sources_list {
+        for architecture in &entry.architectures {
+            if list_of_target_architectures.contains(architecture) == false {
+                list_of_target_architectures.push(architecture.clone());
+            };
+        }
     }
 
-    let target_architectures: Vec<String> = target_architectures;
-
-    print_message(
-        "debug",
-        &format!(
-            "{} {:?}",
-            space_and_truncate_string("target architecture(s):", 47),
-            target_architectures
-        ),
-        &message_config,
-    );
+    let list_of_target_architectures: Vec<String> = list_of_target_architectures;
 
     if target_actions_to_skip.contains(&String::from("architecture_check")) == true {
         print_message("debug", "skipping architecture check.", &message_config);
     } else {
-        for architecture in &target_architectures {
+        for architecture in &list_of_target_architectures {
             if run_fun!(arch-test "$architecture").is_err() == true {
                 if only_action_then_exit.is_empty() == true {
                     print_message(
@@ -1256,8 +1142,8 @@ See debstrap(8) for more information."
                     target_output_file_name = format!(
                         "{}_{}",
                         default_output_file_name(
-                            &target_suites[0],
-                            &target_architectures[0],
+                            &primary_suite,
+                            &primary_architecture,
                             &target_variant,
                         ),
                         run_fun!(date "+%Yy-%mm-%dd").unwrap(),
@@ -1292,70 +1178,6 @@ See debstrap(8) for more information."
         ),
         &message_config,
     );
-
-    //////////////////////////////////////////////
-
-    if chosen_uris.len() == 0 {
-        for uri in default_uris(&target_suites[0], &target_architectures[0]) {
-            chosen_uris.push(uri);
-        }
-    };
-
-    let mut target_uris: Vec<(String, String)> = Vec::new();
-
-    for uri in chosen_uris {
-        let uri_scheme: String;
-        let mut uri_path: String;
-
-        match uri {
-            _ if uri.starts_with("http://") => {
-                uri_scheme = String::from("http://");
-                uri_path = uri.replacen("http://", "", 1);
-            }
-            _ if uri.starts_with("https://") => {
-                uri_scheme = String::from("https://");
-                uri_path = uri.replacen("https://", "", 1);
-            }
-            _ => {
-                print_message("error", &format!("invalid URI: \"{uri}\""), &message_config);
-                return ExitCode::from(1);
-            }
-        };
-
-        while uri_path.contains("//") == true {
-            uri_path = uri_path.replace("//", "/");
-        }
-
-        if uri_path.starts_with("/") == true {
-            uri_path = String::from(uri_path.strip_prefix("/").unwrap());
-        };
-
-        if uri_path.ends_with("/") == true {
-            uri_path = String::from(uri_path.strip_suffix("/").unwrap());
-        };
-
-        target_uris.push((uri_scheme, uri_path));
-    }
-
-    let target_uris: Vec<(String, String)> = target_uris;
-
-    if print_debug == true {
-        let mut uris_to_print: Vec<String> = Vec::new();
-
-        for (scheme, path) in &target_uris {
-            uris_to_print.push(format!("{scheme}{path}"));
-        }
-
-        print_message(
-            "debug",
-            &format!(
-                "{} {:?}",
-                space_and_truncate_string("target mirror(s):", 47),
-                &uris_to_print,
-            ),
-            &message_config,
-        );
-    };
 
     //////////////////////////////////////////////
 
@@ -1529,7 +1351,7 @@ See debstrap(8) for more information."
             merge_usr_directories = false;
         }
         "auto" => {
-            match default_merge_usr_directories(&target_suites[0], &target_variant) {
+            match default_merge_usr_directories(&primary_suite, &target_variant) {
                 true => {
                     merge_usr_directories = true;
                 }
@@ -1558,7 +1380,7 @@ See debstrap(8) for more information."
         &message_config,
     );
 
-    if merge_usr_directories == false && is_split_usr_supported(&target_suites[0]) == false {
+    if merge_usr_directories == false && is_split_usr_supported(&primary_suite) == false {
         print_message(
             "warning",
             "upgrading non-merged-/usr environments post-bookworm is unsupported.",
@@ -1569,7 +1391,7 @@ See debstrap(8) for more information."
     //////////////////////////////////////////////
 
     if chosen_sources_list_format.is_none() == true {
-        chosen_sources_list_format = Some(default_sources_list_format(&target_suites[0]));
+        chosen_sources_list_format = Some(default_sources_list_format(&primary_suite));
     };
 
     let sources_list_format: String = chosen_sources_list_format.unwrap();
@@ -1627,7 +1449,7 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    match case_specific_packages(&target_suites[0], &target_variant) {
+    match case_specific_packages(&primary_suite, &target_variant) {
         Some(to_include) => {
             for package in to_include {
                 chosen_packages_to_include.push(String::from(package));
@@ -1778,15 +1600,7 @@ See debstrap(8) for more information."
         return ExitCode::from(1);
     };
 
-    if download_package_lists(
-        &target_uris,
-        &target_suites,
-        &target_components,
-        &target_architectures,
-        &package_lists_directory,
-        &message_config,
-    )
-    .is_err()
+    if download_package_lists(&sources_list, &package_lists_directory, &message_config).is_err()
         == true
     {
         clean_up_on_exit(
@@ -1804,65 +1618,69 @@ See debstrap(8) for more information."
 
     let mut package_database: HashMap<String, Vec<Package>> = HashMap::new();
 
-    for (scheme, path) in &target_uris {
-        for suite in &target_suites {
-            for component in &target_components {
-                for architecture in &target_architectures {
-                    let package_list_file_name: String =
-                        format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages")
-                            .replace("/", "_");
+    for entry in &sources_list {
+        for (scheme, path) in &entry.uris {
+            for suite in &entry.suites {
+                for component in &entry.components {
+                    for architecture in &entry.architectures {
+                        let package_list_file_name: String = format!(
+                            "{path}/dists/{suite}/{component}/binary-{architecture}_Packages"
+                        )
+                        .replace("/", "_");
 
-                    match std::fs::read_to_string(format!(
-                        "{package_lists_directory}/{package_list_file_name}"
-                    )) {
-                        Ok(result) => {
-                            for entry in result
-                                .trim()
-                                .split("\n\n")
-                                .map(|element| String::from(element))
-                                .collect::<Vec<String>>()
-                            {
-                                let package: Package = Package::new(
-                                    &entry,
-                                    &scheme,
-                                    &path,
-                                    &suite,
-                                    &component,
-                                    &architecture,
+                        match std::fs::read_to_string(format!(
+                            "{package_lists_directory}/{package_list_file_name}"
+                        )) {
+                            Ok(result) => {
+                                for entry in result
+                                    .trim()
+                                    .split("\n\n")
+                                    .map(|element| String::from(element))
+                                    .collect::<Vec<String>>()
+                                {
+                                    let package: Package = Package::new(
+                                        &entry,
+                                        &scheme,
+                                        &path,
+                                        &suite,
+                                        &component,
+                                        &architecture,
+                                    );
+
+                                    let package_name: String = package.name.clone();
+
+                                    match package_database.get_mut(&package_name) {
+                                        Some(result) => {
+                                            result.push(package);
+                                        }
+                                        None => {
+                                            package_database
+                                                .insert(package_name, Vec::from([package]));
+                                        }
+                                    };
+                                }
+                            }
+                            Err(..) => {
+                                print_message(
+                                    "error",
+                                    &format!(
+                                        "failed to read package list: \"{package_list_file_name}\""
+                                    ),
+                                    &message_config,
                                 );
 
-                                let package_name: String = package.name.clone();
+                                clean_up_on_exit(
+                                    &workspace_directory,
+                                    None,
+                                    &target_actions_to_skip,
+                                    &message_config,
+                                )
+                                .unwrap_or(());
 
-                                match package_database.get_mut(&package_name) {
-                                    Some(result) => {
-                                        result.push(package);
-                                    }
-                                    None => {
-                                        package_database.insert(package_name, Vec::from([package]));
-                                    }
-                                };
+                                return ExitCode::from(1);
                             }
-                        }
-                        Err(..) => {
-                            print_message(
-                                "error",
-                                &format!(
-                                    "failed to read package list: \"{package_list_file_name}\""
-                                ),
-                                &message_config,
-                            );
-
-                            clean_up_on_exit(
-                                &workspace_directory,
-                                None,
-                                &target_actions_to_skip,
-                                &message_config,
-                            )
-                            .unwrap_or(());
-
-                            return ExitCode::from(1);
-                        }
-                    };
+                        };
+                    }
                 }
             }
         }
@@ -3014,7 +2832,7 @@ See debstrap(8) for more information."
         return ExitCode::from(1);
     };
 
-    for architecture in &target_architectures {
+    for architecture in &list_of_target_architectures {
         print_message(
             "debug",
             &format!("adding architecture: \"{architecture}\" to \"{target_bootstrap_directory}/var/lib/dpkg/arch\""),
@@ -3178,11 +2996,9 @@ See debstrap(8) for more information."
                     return ExitCode::from(1);
                 };
 
-                if create_sources_list(
-                    &target_uris,
-                    &target_suites,
-                    &target_components,
-                    &default_sources_signed_by(&target_suites[0], &target_architectures[0]),
+                if create_sources_list_file(
+                    &sources_list,
+                    &default_sources_signed_by(&primary_suite, &primary_architecture),
                     &sources_list_format,
                     &format!("{target_bootstrap_directory}/etc/apt/sources.list.d"),
                     &message_config,
@@ -3202,11 +3018,9 @@ See debstrap(8) for more information."
                 };
             }
             "one-line-style" => {
-                if create_sources_list(
-                    &target_uris,
-                    &target_suites,
-                    &target_components,
-                    &default_sources_signed_by(&target_suites[0], &target_architectures[0]),
+                if create_sources_list_file(
+                    &sources_list,
+                    &default_sources_signed_by(&primary_suite, &primary_architecture),
                     &sources_list_format,
                     &format!("{target_bootstrap_directory}/etc/apt"),
                     &message_config,
@@ -3231,7 +3045,7 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    if merge_usr_directories == false && is_split_usr_supported(&target_suites[0]) == false {
+    if merge_usr_directories == false && is_split_usr_supported(&primary_suite) == false {
         print_message(
             "debug",
             &format!("creating warning file: \"{target_bootstrap_directory}/etc/unsupported-skip-usrmerge-conversion\""),

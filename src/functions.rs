@@ -1,5 +1,6 @@
 use crate::algorithms::*;
 use crate::package::*;
+use crate::sources::*;
 
 use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
@@ -95,6 +96,80 @@ pub fn space_and_truncate_string(input_string: &str, output_length: u16) -> Stri
     }
 
     return output_string;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn get_debian_architecture_name(architecture: &str) -> Result<String, ()> {
+    let debian_architecture_name: String;
+
+    match &architecture.to_lowercase().replace("-", "_") as &str {
+        "alpha" => {
+            debian_architecture_name = String::from("alpha");
+        }
+        "amd64" | "x86_64" | "x64" => {
+            debian_architecture_name = String::from("amd64");
+        }
+        "arm64" | "aarch64" => {
+            debian_architecture_name = String::from("arm64");
+        }
+        "armel" => {
+            debian_architecture_name = String::from("armel");
+        }
+        "armhf" | "aarch32" | "armv7l" => {
+            debian_architecture_name = String::from("armhf");
+        }
+        "hppa" | "parisc" => {
+            debian_architecture_name = String::from("hppa");
+        }
+        "i386" | "i686" | "ia32" | "x86" | "x86_32" => {
+            debian_architecture_name = String::from("i386");
+        }
+        "ia64" => {
+            debian_architecture_name = String::from("ia64");
+        }
+        "loong64" | "loongarch64" => {
+            debian_architecture_name = String::from("loong64");
+        }
+        "m68k" => {
+            debian_architecture_name = String::from("m68k");
+        }
+        "mips64el" | "mips64" => {
+            debian_architecture_name = String::from("mips64el");
+        }
+        "mipsel" | "mips" => {
+            debian_architecture_name = String::from("mipsel");
+        }
+        "powerpc" | "ppc" => {
+            debian_architecture_name = String::from("powerpc");
+        }
+        "ppc64" => {
+            debian_architecture_name = String::from("ppc64");
+        }
+        "ppc64el" | "ppc64le" | "powerpc64le" => {
+            debian_architecture_name = String::from("ppc64el");
+        }
+        "riscv64" => {
+            debian_architecture_name = String::from("riscv64");
+        }
+        "s390x" => {
+            debian_architecture_name = String::from("s390x");
+        }
+        "sh4" => {
+            debian_architecture_name = String::from("sh4");
+        }
+        "sparc64" => {
+            debian_architecture_name = String::from("sparc64");
+        }
+        "x32" => {
+            debian_architecture_name = String::from("x32");
+        }
+        _ => {
+            return Err(());
+        }
+    };
+
+    return Ok(debian_architecture_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -633,19 +708,23 @@ pub async fn download_file(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub fn download_package_lists(
-    input_uris: &Vec<(String, String)>,
-    input_suites: &Vec<String>,
-    input_components: &Vec<String>,
-    input_architectures: &Vec<String>,
+    sources_list: &Vec<SourcesEntry>,
     output_directory: &str,
     message_config: &MessageConfig,
 ) -> Result<(), ()> {
-    let total_amount_to_download: u64 = (&input_uris.len()
-        * &input_suites.len()
-        * &input_components.len()
-        * &input_architectures.len())
-        .try_into()
-        .unwrap();
+    let mut total_amount_to_download: u64 = 0;
+
+    for entry in sources_list {
+        for _uri in &entry.uris {
+            for _suite in &entry.suites {
+                for _component in &entry.components {
+                    for _architecture in &entry.architectures {
+                        total_amount_to_download += 1;
+                    }
+                }
+            }
+        }
+    }
 
     let counter_spacing: u16;
 
@@ -674,88 +753,95 @@ pub fn download_package_lists(
 
     let mut counter: u64 = 0;
 
-    for (scheme, path) in input_uris {
-        for suite in input_suites {
-            for component in input_components {
-                for architecture in input_architectures {
-                    counter += 1;
+    for entry in sources_list {
+        for (scheme, path) in &entry.uris {
+            for suite in &entry.suites {
+                for component in &entry.components {
+                    for architecture in &entry.architectures {
+                        counter += 1;
 
-                    println!(
-                        "{} {}",
-                        space_and_truncate_string(
-                            &format!("({counter}/{}):", total_amount_to_download),
-                            counter_spacing,
-                        ),
-                        format!("{scheme}{path} {suite}/{component} {architecture} Packages"),
-                    );
+                        println!(
+                            "{} {}",
+                            space_and_truncate_string(
+                                &format!("({counter}/{total_amount_to_download}):"),
+                                counter_spacing,
+                            ),
+                            format!("{scheme}{path} {suite}/{component} {architecture} Packages"),
+                        );
 
-                    let mut did_package_list_download: bool = false;
+                        let mut did_package_list_download: bool = false;
 
-                    let package_list_uri: String =
-                        format!("{scheme}{path}/dists/{suite}/{component}/binary-{architecture}");
+                        let package_list_uri: String = format!(
+                            "{scheme}{path}/dists/{suite}/{component}/binary-{architecture}"
+                        );
 
-                    let potential_file_names: Vec<String> = Vec::from([
-                        String::from("Packages.xz"),
-                        String::from("Packages.gz"),
-                        String::from("Packages.bz2"),
-                        String::from("Packages"),
-                    ]);
+                        let potential_file_names: Vec<String> = Vec::from([
+                            String::from("Packages.xz"),
+                            String::from("Packages.gz"),
+                            String::from("Packages.bz2"),
+                            String::from("Packages"),
+                        ]);
 
-                    for file_name in potential_file_names {
-                        match tokio::runtime::Runtime::new()
-                            .unwrap()
-                            .block_on(download_file(
-                                &format!("{package_list_uri}/{file_name}"),
-                                &output_directory,
-                                &message_config,
-                            )) {
-                            Ok(..) => {
-                                did_package_list_download = true;
-
-                                if decompress_file(
-                                    &format!("{output_directory}/{file_name}"),
+                        for file_name in potential_file_names {
+                            match tokio::runtime::Runtime::new()
+                                .unwrap()
+                                .block_on(download_file(
+                                    &format!("{package_list_uri}/{file_name}"),
+                                    &output_directory,
                                     &message_config,
-                                )
-                                .is_err()
-                                    == true
-                                {
-                                    return Err(());
-                                };
+                                )) {
+                                Ok(..) => {
+                                    did_package_list_download = true;
 
-                                let package_list_file_name: String = format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages").replace("/", "_");
+                                    if decompress_file(
+                                        &format!("{output_directory}/{file_name}"),
+                                        &message_config,
+                                    )
+                                    .is_err()
+                                        == true
+                                    {
+                                        return Err(());
+                                    };
 
-                                if std::fs::rename(
-                                    format!("{output_directory}/Packages"),
-                                    format!("{output_directory}/{package_list_file_name}"),
-                                )
-                                .is_err()
-                                    == true
-                                {
+                                    let package_list_file_name: String = format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages").replace("/", "_");
+
+                                    if std::fs::rename(
+                                        format!("{output_directory}/Packages"),
+                                        format!("{output_directory}/{package_list_file_name}"),
+                                    )
+                                    .is_err()
+                                        == true
+                                    {
+                                        print_message(
+                                            "error",
+                                            &format!("failed to rename file: \"Packages\""),
+                                            &message_config,
+                                        );
+
+                                        return Err(());
+                                    };
+
+                                    break;
+                                }
+                                Err(message) => {
                                     print_message(
-                                        "error",
-                                        &format!("failed to rename file: \"Packages\""),
+                                        "debug",
+                                        &format!("{message}, skipping."),
                                         &message_config,
                                     );
+                                }
+                            };
+                        }
 
-                                    return Err(());
-                                };
-
-                                break;
-                            }
-                            Err(message) => {
-                                print_message(
-                                    "debug",
-                                    &format!("{message}, skipping."),
-                                    &message_config,
-                                );
-                            }
+                        if did_package_list_download == false {
+                            print_message(
+                                "error",
+                                "failed to download package list.",
+                                &message_config,
+                            );
+                            return Err(());
                         };
                     }
-
-                    if did_package_list_download == false {
-                        print_message("error", "failed to download package list.", &message_config);
-                        return Err(());
-                    };
                 }
             }
         }
@@ -1590,143 +1676,6 @@ pub fn manually_merge_usr_directories(
             };
         };
     }
-
-    return Ok(());
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub fn create_sources_list(
-    input_uris: &Vec<(String, String)>,
-    input_suites: &Vec<String>,
-    input_components: &Vec<String>,
-    sources_signed_by: &str,
-    format: &str,
-    output_directory: &str,
-    message_config: &MessageConfig,
-) -> Result<(), ()> {
-    let mut full_uris: Vec<String> = Vec::new();
-
-    for (scheme, path) in input_uris {
-        full_uris.push(format!("{scheme}{path}"));
-    }
-
-    match &format as &str {
-        "deb822-style" => {
-            print_message(
-                "debug",
-                &format!("creating default deb822-style sources list: \"{output_directory}/sources.sources\""),
-                &message_config,
-            );
-
-            if create_file(
-                &format!("{output_directory}/sources.sources"),
-                &format!(
-                    "\
-Types: deb deb-src
-URIs: {}
-Suites: {}
-Components: {}
-Signed-By: /usr/share/keyrings/{}
-",
-                    format!("{:?}", &full_uris).replace(['[', ']', '"', ','], ""),
-                    format!("{:?}", &input_suites).replace(['[', ']', '"', ','], ""),
-                    format!("{:?}", &input_components).replace(['[', ']', '"', ','], ""),
-                    sources_signed_by,
-                ),
-                &message_config,
-            )
-            .is_err()
-                == true
-            {
-                print_message(
-                    "error",
-                    &format!("failed to create file: \"{output_directory}/sources.sources\""),
-                    &message_config,
-                );
-                return Err(());
-            };
-        }
-        "one-line-style" => {
-            print_message(
-                "debug",
-                &format!("creating default one-line-style sources list: \"{output_directory}/sources.list\""),
-                &message_config,
-            );
-
-            if create_file(
-                &format!("{output_directory}/sources.list"),
-                "",
-                &message_config,
-            )
-            .is_err()
-                == true
-            {
-                print_message(
-                    "error",
-                    &format!("failed to create file: \"{output_directory}/sources.list\""),
-                    &message_config,
-                );
-                return Err(());
-            };
-
-            let mut mirror_counter: u16 = 0;
-
-            for mirror in &full_uris {
-                mirror_counter += 1;
-
-                if mirror_counter != 1 {
-                    if append_file(
-                        &format!("{output_directory}/sources.list"),
-                        "\n",
-                        &message_config,
-                    )
-                    .is_err()
-                        == true
-                    {
-                        return Err(());
-                    };
-                };
-
-                let mut suite_counter: u16 = 0;
-
-                for suite in input_suites {
-                    suite_counter += 1;
-
-                    if suite_counter != 1 {
-                        if append_file(
-                            &format!("{output_directory}/sources.list"),
-                            "\n",
-                            &message_config,
-                        )
-                        .is_err()
-                            == true
-                        {
-                            return Err(());
-                        };
-                    };
-
-                    if append_file(
-                        &format!("{output_directory}/sources.list"),
-                        &format!(
-                            "deb-src {mirror} {suite} {}\ndeb {mirror} {suite} {}\n",
-                            format!("{:?}", &input_components)
-                                .replace(['[', ']', '"', ','], ""),
-                            format!("{:?}", &input_components)
-                                .replace(['[', ']', '"', ','], ""),
-                        ),
-                        &message_config,
-                    )
-                    .is_err()
-                        == true
-                    {
-                        return Err(());
-                    };
-                }
-            }
-        }
-        _ => {}
-    };
 
     return Ok(());
 }

@@ -24,16 +24,17 @@ pub const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub const UBUNTU_CURRENT_SUITES: [&str; 9] = [
-    "devel",  // alias for latest version
-    "noble",  // Ubuntu 24.04 LTS
-    "mantic", // Ubuntu 23.10
-    "lunar",  // Ubuntu 23.04
-    "jammy",  // Ubuntu 22.04 LTS
-    "focal",  // Ubuntu 20.04 LTS
-    "bionic", // Ubuntu 18.04 LTS
-    "xenial", // Ubuntu 16.04 LTS
-    "trusty", // Ubuntu 14.04 LTS
+pub const UBUNTU_CURRENT_SUITES: [&str; 10] = [
+    "devel",    // alias for latest version
+    "oracular", // Ubuntu 24.10
+    "noble",    // Ubuntu 24.04 LTS
+    "mantic",   // Ubuntu 23.10
+    "lunar",    // Ubuntu 23.04
+    "jammy",    // Ubuntu 22.04 LTS
+    "focal",    // Ubuntu 20.04 LTS
+    "bionic",   // Ubuntu 18.04 LTS
+    "xenial",   // Ubuntu 16.04 LTS
+    "trusty",   // Ubuntu 14.04 LTS
 ];
 
 pub const UBUNTU_OBSOLETE_SUITES: [&str; 17] = [

@@ -28,6 +28,7 @@ declare -a suites=(
   #'jessie'          # Debian 8
   # Ubuntu releases:
   #'devel'           # alias for latest version
+  #'oracular'        # Ubuntu 24.10
   #'noble'           # Ubuntu 24.04 LTS
   #'mantic'          # Ubuntu 23.10
   #'lunar'           # Ubuntu 23.04

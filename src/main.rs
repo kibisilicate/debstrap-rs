@@ -26,7 +26,7 @@ fn main() -> ExitCode {
 
     let mut early_action_then_exit: Vec<String> = Vec::new();
     let mut chosen_print_color: String = String::new();
-    let mut chosen_print_debug: Option<bool> = None;
+    let mut chosen_print_debug: String = String::new();
 
     for argument in provided_arguments.iter_mut() {
         match argument as &str {
@@ -38,8 +38,12 @@ fn main() -> ExitCode {
                 early_action_then_exit.push(String::from("print_version_message"));
                 *argument = String::new();
             }
-            "--color" => {
+            "-C" | "--color" => {
                 chosen_print_color = String::from("true");
+                *argument = String::new();
+            }
+            _ if argument.starts_with("-C=") => {
+                chosen_print_color = String::from(argument.replacen("-C=", "", 1).trim());
                 *argument = String::new();
             }
             _ if argument.starts_with("--color=") => {
@@ -47,11 +51,15 @@ fn main() -> ExitCode {
                 *argument = String::new();
             }
             "-d" | "--debug" => {
-                chosen_print_debug = Some(true);
+                chosen_print_debug = String::from("true");
                 *argument = String::new();
             }
-            "--no-debug" => {
-                chosen_print_debug = Some(false);
+            _ if argument.starts_with("-d=") => {
+                chosen_print_debug = String::from(argument.replacen("-d=", "", 1).trim());
+                *argument = String::new();
+            }
+            _ if argument.starts_with("--debug=") => {
+                chosen_print_debug = String::from(argument.replacen("--debug=", "", 1).trim());
                 *argument = String::new();
             }
             _ => {}
@@ -107,24 +115,19 @@ fn main() -> ExitCode {
 
     //////////////////////////////////////////////
 
-    if chosen_print_debug.is_none() == true {
+    if chosen_print_debug.is_empty() == true {
         match std::env::var("DEBSTRAP_DEBUG") {
-            Ok(value) => {
-                match &value as &str {
-                    "true" => chosen_print_debug = Some(true),
-                    "false" => chosen_print_debug = Some(false),
-                    _ => chosen_print_debug = Some(false),
-                };
-            }
-            Err(..) => chosen_print_debug = Some(false),
+            Ok(result) => chosen_print_debug = result,
+            Err(..) => chosen_print_debug = String::from("false"),
         };
     };
 
     let print_debug: bool;
 
-    match chosen_print_debug.unwrap() {
-        true => print_debug = true,
-        false => print_debug = false,
+    match &chosen_print_debug as &str {
+        "true" | "yes" => print_debug = true,
+        "false" | "no" => print_debug = false,
+        _ => print_debug = false,
     };
 
     //////////////////////////////////////////////

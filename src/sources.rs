@@ -377,6 +377,8 @@ pub fn create_sources_list_file(
             if create_file(
                 &format!("{output_directory}/sources.sources"),
                 "",
+                None,
+                None,
                 &message_config,
             )
             .is_err()
@@ -439,6 +441,8 @@ Signed-By: /usr/share/keyrings/{}
             if create_file(
                 &format!("{output_directory}/sources.list"),
                 "",
+                None,
+                None,
                 &message_config,
             )
             .is_err()

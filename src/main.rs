@@ -1619,6 +1619,8 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
+    print_message("debug", "creating package database", &message_config);
+
     let mut package_database: HashMap<String, Vec<Package>> = HashMap::new();
 
     for entry in &sources_list {
@@ -2781,6 +2783,8 @@ See debstrap(8) for more information."
     if create_file(
         &format!("{target_bootstrap_directory}/var/lib/dpkg/status"),
         "",
+        None,
+        None,
         &message_config,
     )
     .is_err()
@@ -2800,6 +2804,8 @@ See debstrap(8) for more information."
     if create_file(
         &format!("{target_bootstrap_directory}/var/lib/dpkg/available"),
         "",
+        None,
+        None,
         &message_config,
     )
     .is_err()
@@ -2819,6 +2825,8 @@ See debstrap(8) for more information."
     if create_file(
         &format!("{target_bootstrap_directory}/var/lib/dpkg/arch"),
         "",
+        None,
+        None,
         &message_config,
     )
     .is_err()
@@ -2877,54 +2885,13 @@ See debstrap(8) for more information."
 
 # See fstab(5) for more information.
 ",
+        None,
+        None,
         &message_config,
     )
     .is_err()
         == true
     {
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    if run_cmd!(chown root:root "$target_bootstrap_directory/etc/fstab" 2> /dev/stdout).is_err()
-        == true
-    {
-        print_message(
-            "error",
-            &format!(
-                "failed to change permissions of file: \"{target_bootstrap_directory}/etc/fstab\""
-            ),
-            &message_config,
-        );
-
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    if run_cmd!(chmod 0644 "$target_bootstrap_directory/etc/fstab" 2> /dev/stdout).is_err() == true
-    {
-        print_message(
-            "error",
-            &format!(
-                "failed to change permissions of file: \"{target_bootstrap_directory}/etc/fstab\""
-            ),
-            &message_config,
-        );
-
         clean_up_on_exit(
             &workspace_directory,
             Some(&target_bootstrap_directory),
@@ -2956,6 +2923,8 @@ See debstrap(8) for more information."
 
 # See hosts(5) for more information.
 ",
+        None,
+        None,
         &message_config,
     )
     .is_err()
@@ -3058,6 +3027,8 @@ See debstrap(8) for more information."
         if create_file(
             &format!("{target_bootstrap_directory}/etc/unsupported-skip-usrmerge-conversion"),
             "this system will not be supported in the future",
+            None,
+            None,
             &message_config,
         )
         .is_err()
@@ -3165,6 +3136,8 @@ See debstrap(8) for more information."
     if create_file(
         &format!("{target_bootstrap_directory}/usr/sbin/policy-rc.d"),
         "#! /bin/sh\n\nexit 101\n",
+        Some(0o755),
+        None,
         &message_config,
     )
     .is_err()
@@ -3175,27 +3148,6 @@ See debstrap(8) for more information."
             &format!(
                 "failed to create file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""
             ),
-            &message_config,
-        );
-
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    if run_cmd!(chmod 0755 "$target_bootstrap_directory/usr/sbin/policy-rc.d" 2> /dev/stdout)
-        .is_err()
-        == true
-    {
-        print_message(
-            "error",
-            &format!("failed to change permissions of file: \"{target_bootstrap_directory}/usr/sbin/policy-rc.d\""),
             &message_config,
         );
 
@@ -3269,6 +3221,8 @@ See debstrap(8) for more information."
     if create_file(
         &format!("{start_stop_daemon_location}"),
         "#! /bin/sh\n\necho -e '\\nWarning: Fake start-stop-daemon called, doing nothing'\n\nexit 0\n",
+        Some(0o755),
+        None,
         &message_config,
     ).is_err() == true {
         clean_up_on_exit(
@@ -3277,24 +3231,6 @@ See debstrap(8) for more information."
             &target_actions_to_skip,
             &message_config,
         ).unwrap_or(());
-
-        return ExitCode::from(1);
-    };
-
-    if run_cmd!(chmod 0755 "$start_stop_daemon_location" 2> /dev/stdout).is_err() == true {
-        print_message(
-            "error",
-            &format!("failed to change permissions of file: \"{start_stop_daemon_location}\""),
-            &message_config,
-        );
-
-        clean_up_on_exit(
-            &workspace_directory,
-            Some(&target_bootstrap_directory),
-            &target_actions_to_skip,
-            &message_config,
-        )
-        .unwrap_or(());
 
         return ExitCode::from(1);
     };
@@ -3598,6 +3534,8 @@ dpkg --force-depends --force-confold --install *.deb
         if create_file(
             &format!("{target_bootstrap_directory}/etc/machine-id"),
             "uninitialized\n",
+            None,
+            None,
             &message_config,
         )
         .is_err()

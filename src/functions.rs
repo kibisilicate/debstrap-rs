@@ -6,7 +6,10 @@ use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use std::collections::HashMap;
 use std::error::Error;
+use std::fs::OpenOptions;
 use std::io::{Cursor, Write};
+use std::os::unix::fs;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
 pub struct MessageConfig {
@@ -177,12 +180,54 @@ pub fn get_debian_architecture_name(architecture: &str) -> Result<String, ()> {
 pub fn create_file(
     file_path: &str,
     file_contents: &str,
+    chosen_file_permissions: Option<u32>,
+    chosen_file_ownership: Option<(u32, u32)>,
     message_config: &MessageConfig,
 ) -> Result<(), ()> {
-    if std::fs::write(file_path, file_contents).is_err() == true {
+    let file_permissions: u32;
+
+    match chosen_file_permissions {
+        Some(result) => file_permissions = result,
+        None => file_permissions = 0o644,
+    };
+
+    match OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(file_permissions)
+        .open(file_path)
+    {
+        Ok(mut result) => {
+            if result.write_all(file_contents.as_bytes()).is_err() == true {
+                print_message(
+                    "error",
+                    &format!("failed to write to file: \"{file_path}\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+        }
+        Err(..) => {
+            print_message(
+                "error",
+                &format!("failed to create file: \"{file_path}\""),
+                &message_config,
+            );
+            return Err(());
+        }
+    };
+
+    let file_ownership: (u32, u32);
+
+    match chosen_file_ownership {
+        Some((uid, gid)) => file_ownership = (uid, gid),
+        None => file_ownership = (0, 0),
+    };
+
+    if fs::chown(file_path, Some(file_ownership.0), Some(file_ownership.1)).is_err() == true {
         print_message(
             "error",
-            &format!("failed to create file: \"{file_path}\""),
+            &format!("failed to set ownership of file: \"{file_path}\""),
             &message_config,
         );
         return Err(());
@@ -667,7 +712,7 @@ pub async fn download_file(
     output_directory: &str,
     message_config: &MessageConfig,
 ) -> Result<(), String> {
-    let server_response = reqwest::get(uri.clone()).await;
+    let server_response = reqwest::get(uri).await;
 
     let filename: String = String::from(Path::new(&uri).file_name().unwrap().to_string_lossy());
 

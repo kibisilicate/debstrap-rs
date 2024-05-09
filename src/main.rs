@@ -250,6 +250,7 @@ See debstrap(8) for more information."
     let mut chosen_output_location: String = String::new();
     let mut chosen_output_format: String = String::new();
     let mut chosen_sources_location: String = String::new();
+    let mut chosen_uris: Vec<String> = Vec::new();
     let mut chosen_suites: Vec<String> = Vec::new();
     let mut chosen_components: Vec<String> = Vec::new();
     let mut chosen_architectures: Vec<String> = Vec::new();
@@ -258,7 +259,6 @@ See debstrap(8) for more information."
     let mut chosen_packages_to_include: Vec<String> = Vec::new();
     let mut chosen_packages_to_exclude: Vec<String> = Vec::new();
     let mut chosen_packages_to_prohibit: Vec<String> = Vec::new();
-    let mut chosen_uris: Vec<String> = Vec::new();
     let mut chosen_resolver: String = String::new();
     let mut consider_recommends: Option<bool> = None;
     let mut chosen_extractor: String = String::new();
@@ -309,6 +309,15 @@ See debstrap(8) for more information."
             _ if argument.starts_with("--sources=") => {
                 chosen_sources_location =
                     String::from(argument.replacen("--sources=", "", 1).trim());
+            }
+            _ if argument.starts_with("-m=") => {
+                chosen_uris.extend(parse_list_of_values("-m=", &argument));
+            }
+            _ if argument.starts_with("--mirror=") => {
+                chosen_uris.extend(parse_list_of_values("--mirror=", &argument));
+            }
+            _ if argument.starts_with("--mirrors=") => {
+                chosen_uris.extend(parse_list_of_values("--mirrors=", &argument));
             }
             _ if argument.starts_with("-r=") => {
                 chosen_suites.extend(parse_list_of_values("-r=", &argument));
@@ -372,15 +381,6 @@ See debstrap(8) for more information."
             }
             _ if argument.starts_with("--prohibit=") => {
                 chosen_packages_to_prohibit.extend(parse_list_of_values("--prohibit=", &argument));
-            }
-            _ if argument.starts_with("-m=") => {
-                chosen_uris.extend(parse_list_of_values("-m=", &argument));
-            }
-            _ if argument.starts_with("--mirror=") => {
-                chosen_uris.extend(parse_list_of_values("--mirror=", &argument));
-            }
-            _ if argument.starts_with("--mirrors=") => {
-                chosen_uris.extend(parse_list_of_values("--mirrors=", &argument));
             }
             _ if argument.starts_with("-R=") => {
                 chosen_resolver = String::from(argument.replacen("-R=", "", 1).trim());
@@ -825,14 +825,14 @@ See debstrap(8) for more information."
 
     match using_sources_file {
         true => {
-            if chosen_suites.len() != 0
+            if chosen_uris.len() != 0
+                || chosen_suites.len() != 0
                 || chosen_components.len() != 0
                 || chosen_architectures.len() != 0
-                || chosen_uris.len() != 0
             {
                 print_message(
                     "warning",
-                    "ignoring provided suite(s), component(s), architecture(s), and URI(s)",
+                    "ignoring provided URI(s), suite(s), component(s), and architecture(s)",
                     &message_config,
                 );
             };
@@ -957,10 +957,10 @@ See debstrap(8) for more information."
             };
 
             match create_sources_list(
+                &chosen_uris,
                 &chosen_suites,
                 &chosen_components,
                 &chosen_architectures,
-                &chosen_uris,
                 &message_config,
             ) {
                 Ok(result) => {

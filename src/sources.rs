@@ -195,10 +195,10 @@ pub fn parse_sources_file(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub fn create_sources_list(
+    input_uris: &Vec<String>,
     input_suites: &Vec<String>,
     input_components: &Vec<String>,
     input_architectures: &Vec<String>,
-    input_uris: &Vec<String>,
     message_config: &MessageConfig,
 ) -> Result<Vec<SourcesEntry>, ()> {
     if input_suites.len() == 0 {

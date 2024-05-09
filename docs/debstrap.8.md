@@ -1,14 +1,14 @@
-% DEBSTRAP(8) debstrap 0.0.1-experimental
+% DEBSTRAP(8) debstrap 0.0.4
 % Stephany Panagaea
-% 06 February 2023
+% 10 May 2024
 
 # NAME
 debstrap - Bootstrap overly complicated Debian systems
 
 # SYNOPSIS
-**debstrap**\ \[*OPTION*\...\]\ **-r**=*SUITE*\[,*SUITE*,\...\]\ **-o**=*DIRECTORY*|*FILENAME*
+**debstrap**\ \[*OPTION*\...\]\ **-o**=*DIRECTORY*|*FILENAME*\ **-r**=*SUITE*\[,*SUITE*,\...\]
 
-**debstrap**\ \[*OPTION*\...\]\ **\--release**=*SUITE*\[,*SUITE*,\...\]\ **\--output**=*DIRECTORY*|*FILENAME*
+**debstrap**\ \[*OPTION*\...\]\ **\--output**=*DIRECTORY*|*FILENAME*\ **\--release**=*SUITE*\[,*SUITE*,\...\]
 
 # DESCRIPTION
 **debstrap** bootstraps Debian and derivative systems using one or more suites, components, architectures, and mirrors.
@@ -25,11 +25,17 @@ and values can be separated by commas and/or whitespace.
 **-V**, **\--version**
 :   Print **debstrap** version information and exit.
 
-**-d**, **\--debug**
+**-C**, **\--color**\[=*WHEN*\]
+:   Use a colorful output.
+
+    *WHEN* can be \'**always**\'|\'**true**\', \'**never**\'|\'**false**\', or \'**auto**\'.
+
+    The default is \'**auto**\' which only uses color when standard output is a terminal.
+
+**-d**, **\--debug**\[=*WHEN*\]
 :   Print extra information useful for debugging.
 
-**\--no-debug**
-:   Don\'t print debug information.
+    *WHEN* can be \'**true**\'|\'**yes**\', or \'**false**\'|\'**no**\'.
 
 **-o**, **\--output**=*DIRECTORY*|*FILENAME*
 :   Set the output location.
@@ -41,6 +47,17 @@ and values can be separated by commas and/or whitespace.
     The default format is \'**directory**\' unless the provided output location implies a different format.
 
     See the section **FORMATS** for more information.
+
+**-s**, **\--sources**=*DIRECTORY*|*FILENAME*
+:   Use the provided .sources file(s).
+    It can be a relative or absolute path to a .sources file or directory containing one or more .sources files.
+
+    When used, the options **\--mirrors**, **\--releases**, **\--components**, and **\--architectures** are ignored.
+
+**-m**, **\--mirror**, **\--mirrors**=*URI*\[,*URI*,\...\]
+:   List of mirrors to use.
+
+    Supported *URI* schemes are \'**http://**\', and \'**https://**\'.
 
 **-r**, **\--release**, **\--releases**=*SUITE*\[,*SUITE*,\...\]
 :   List of suites from the archive to use.
@@ -78,11 +95,6 @@ and values can be separated by commas and/or whitespace.
 **-P**, **\--prohibit**=*PACKAGE*\[,*PACKAGE*,\...\]
 :   List of packages to be prohibited from being present in the target package set during dependency resolution.
 
-**-m**, **\--mirror**, **\--mirrors**=*URI*\[,*URI*,\...\]
-:   List of mirrors to use.
-
-    Supported *URI* schemes are \'**http://**\', and \'**https://**\'.
-
 **-R**, **\--resolver**=*RESOLVER*
 :   Set which dependency resolver to use.
     The default resolver is \'**internal**\'.
@@ -118,7 +130,7 @@ and values can be separated by commas and/or whitespace.
 **-M**, **\--merge-usr**=*WHEN*
 :   Whether or not to have a merged /usr directory scheme.
 
-    *WHEN* can be \'**yes**\'|\'**true**\', \'**no**\'|\'**false**\', or \'**auto**\'.
+    *WHEN* can be \'**true**\'|\'**yes**\', \'**false**\'|\'**no**\', or \'**auto**\'.
 
     The default is \'**auto**\' which merges the /usr directories if supported by the chosen suite and/or variant.
 
@@ -135,7 +147,6 @@ and values can be separated by commas and/or whitespace.
     Useful for configuration during the bootstrap but may cause hanging in automated scripts.
 
     Inside the target sets the environment variables **DEBIAN_FRONTEND** to \'**dialog**\', and **DEBCONF_NONINTERACTIVE_SEEN** to \'**false**\'.
-
 
 **\--non-interactive**
 :   Do not wait for user input on prompts during the bootstrap (this is the default behavior).
@@ -157,13 +168,6 @@ and values can be separated by commas and/or whitespace.
 
 **-n**, **\--no**, **\--assume-no**
 :   Automatically assume no to all prompts.
-
-**\--color**\[=*WHEN*\]
-:   Whether or not to use a colorful output.
-
-    *WHEN* can be \'**always**\'|\'**true**\', \'**never**\'|\'**false**\', or \'**auto**\'.
-
-    The default is \'**auto**\' which only uses color when standard output is a terminal.
 
 **-O**, **\--only**=*ACTION*
 :   Only perform a certain action then exit.
@@ -187,11 +191,15 @@ The following formats are supported by **debstrap**:
 :   Uses a sub-directory inside the temporary workspace as the target directory for the bootstrap.
     Once finished it creates a tarball containing all of the contents of the target directory, then moves the tarball to the output directory.
 
+    If the options **\--only=download** or **\--only=extract** are used and no output format was chosen then the default format will be \'**tarball**\'.
+
 # ARCHITECTURES
 The following architectures are supported by **debstrap**:
 
-**host**
-An alias that selects all the architectures the host kernel natively supports.
+**host**\
+\ \ \ \ \ \ \ An alias that selects all the architectures the host kernel natively supports.
+
+\ \ \ \ \ \ \ Only the option **\--architectures** can use this alias.
 
 **alpha**
 
@@ -259,7 +267,6 @@ The following resolvers are supported by **debstrap**:
 
 **internal**\
 \ \ \ \ \ \ \ \ Dependencies are resolved internally by **debstrap**.
-    Currently, it can only use the first suite, component, architecture, and mirror.
 
 **none**\
 \ \ \ \ \ \ \ \ Does not perform any dependency resolution, uses the initial package set as the target package set.
@@ -298,8 +305,6 @@ The following specific actions are provided by **debstrap**:
 **download**\
 \ \ \ \ \ \ \ Only download the packages and exit.
 
-<!-- If this option is used and no format was chosen and/or implied then the default format will be \'**tarball**\'. -->
-
 **extract**\
 \ \ \ \ \ \ \ Only extract the packages and exit.
 
@@ -313,7 +318,7 @@ The following **debstrap** actions can be skipped:
 :   Skip checking whether the output directory is empty.
 
 **packages-removal**
-:   Skip removing the packages directory \'**\\\$TARGET/packages/**\' inside the target during cleanup.
+:   Skip removing the packages directory \'**\$TARGET/packages/**\' inside the target during cleanup.
 
 **workspace-removal**
 :   Skip removing the temporary workspace on exit.
@@ -323,20 +328,22 @@ The following **debstrap** actions can be skipped:
 ## External Environment
 
 **DEBSTRAP_COLOR**\
-\ \ \ \ \ \ \ Accepts the same values as the option **\--color** (the option **\--color** can override this).
+\ \ \ \ \ \ \ Accepts the same values as **\--color** (the option **\--color** can override this).
 
 **NO_COLOR**\
 \ \ \ \ \ \ \ Do not use a colorful output (the option **\--color**, and the variable **DEBSTRAP_COLOR** can override this).
     See \'https://no-color.org/\' for more information.
 
 **DEBSTRAP_DEBUG**\
-\ \ \ \ \ \ \ Whether or not to print debug information.
-    Valid values are \'**true**\', and \'**false**\'.
+\ \ \ \ \ \ \ Accepts the same values as **\--debug** (the option **\--debug** can override this).
 
 **DEBSTRAP_DIRECTORY**\
 \ \ \ \ \ \ \ Use the specified directory as the temporary workspace.
 
 \ \ \ \ \ \ \ The directory must exist and be empty, and it will be deleted on exit unless the option **\--skip=workspace-removal** is used.
+
+**DEBSTRAP_SOURCES**\
+\ \ \ \ \ \ \ Accepts the same values as **\--sources** (the option **\--sources** can override this).
 
 ## Internal Environment
 

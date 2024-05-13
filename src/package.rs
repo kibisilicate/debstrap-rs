@@ -1,3 +1,7 @@
+use crate::functions::*;
+
+use byte_unit::{Byte, Unit, UnitType};
+
 #[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Relationship {
     pub name: String,
@@ -9,13 +13,9 @@ pub struct Relationship {
 pub struct Package {
     pub name: String,
     pub version: String,
+    pub architecture: String,
     pub section: String,
     pub priority: String,
-    pub uri_scheme: String,
-    pub uri_path: String,
-    pub suite: String,
-    pub component: String,
-    pub architecture: String,
     pub depends: Vec<Vec<Relationship>>,
     pub pre_depends: Vec<Vec<Relationship>>,
     pub recommends: Vec<Vec<Relationship>>,
@@ -33,6 +33,11 @@ pub struct Package {
     pub maintainer: String,
     pub description: String,
     pub homepage: String,
+    pub origin_suite: String,
+    pub origin_component: String,
+    pub origin_architecture: String,
+    pub origin_uri_scheme: String,
+    pub origin_uri_path: String,
 }
 
 fn parse_relationships(prefix: &str, input: &str) -> Vec<Vec<Relationship>> {
@@ -88,21 +93,17 @@ fn parse_relationships(prefix: &str, input: &str) -> Vec<Vec<Relationship>> {
 impl Package {
     pub fn new(
         package_entries: &str,
-        package_uri_scheme: &str,
-        package_uri_path: &str,
-        package_suite: &str,
-        package_component: &str,
-        package_architecture: &str,
+        origin_suite: &str,
+        origin_component: &str,
+        origin_architecture: &str,
+        origin_uri_scheme: &str,
+        origin_uri_path: &str,
     ) -> Self {
         let mut name: String = String::new();
         let mut version: String = String::new();
+        let mut architecture: String = String::new();
         let mut section: String = String::new();
         let mut priority: String = String::new();
-        let uri_scheme: String = String::from(package_uri_scheme);
-        let uri_path: String = String::from(package_uri_path);
-        let suite: String = String::from(package_suite);
-        let component: String = String::from(package_component);
-        let mut architecture: String = String::from(package_architecture);
         let mut depends: Vec<Vec<Relationship>> = Vec::new();
         let mut pre_depends: Vec<Vec<Relationship>> = Vec::new();
         let mut recommends: Vec<Vec<Relationship>> = Vec::new();
@@ -129,14 +130,14 @@ impl Package {
                 _ if line.starts_with("Version: ") => {
                     version = line.replacen("Version: ", "", 1);
                 }
+                _ if line.starts_with("Architecture: ") => {
+                    architecture = line.replacen("Architecture: ", "", 1);
+                }
                 _ if line.starts_with("Section: ") => {
                     section = line.replacen("Section: ", "", 1);
                 }
                 _ if line.starts_with("Priority: ") => {
                     priority = line.replacen("Priority: ", "", 1);
-                }
-                _ if line.starts_with("Architecture: ") => {
-                    architecture = line.replacen("Architecture: ", "", 1);
                 }
                 _ if line.starts_with("Depends: ") => {
                     depends = parse_relationships("Depends: ", line);
@@ -196,13 +197,9 @@ impl Package {
         Self {
             name: name,
             version: version,
+            architecture: architecture,
             section: section,
             priority: priority,
-            uri_scheme: uri_scheme,
-            uri_path: uri_path,
-            suite: suite,
-            component: component,
-            architecture: architecture,
             depends: depends,
             pre_depends: pre_depends,
             recommends: recommends,
@@ -220,6 +217,124 @@ impl Package {
             maintainer: maintainer,
             description: description,
             homepage: homepage,
+            origin_suite: String::from(origin_suite),
+            origin_component: String::from(origin_component),
+            origin_architecture: String::from(origin_architecture),
+            origin_uri_scheme: String::from(origin_uri_scheme),
+            origin_uri_path: String::from(origin_uri_path),
         }
     }
+}
+
+fn pretty_print_string(name: &str, input: &str, message_config: &MessageConfig) {
+    if input.is_empty() == false {
+        if message_config.color == true {
+            println!("\x1b[01m{name}\x1b[00m: {input}");
+        } else {
+            println!("{name}: {input}");
+        };
+    };
+}
+
+fn pretty_print_relationships(
+    name: &str,
+    input: &Vec<Vec<Relationship>>,
+    message_config: &MessageConfig,
+) {
+    if input.len() != 0 {
+        if message_config.color == true {
+            println!("\x1b[01m{name}\x1b[00m: [");
+        } else {
+            println!("{name}: [");
+        };
+
+        for value in input {
+            let mut line_to_print: String = String::new();
+
+            for (index, alternative) in value.iter().enumerate() {
+                if index == 0 {
+                    line_to_print = alternative.name.clone();
+                } else {
+                    line_to_print = format!("{line_to_print} | {}", alternative.name.clone());
+                };
+
+                if alternative.architecture.is_empty() == false {
+                    line_to_print = format!("{line_to_print}:{}", alternative.architecture);
+                };
+
+                if alternative.version.is_empty() == false {
+                    line_to_print = format!("{line_to_print} {}", alternative.version);
+                };
+            }
+
+            println!("    {line_to_print}");
+        }
+
+        println!("]");
+    };
+}
+
+pub fn pretty_print_package(package: &Package, message_config: &MessageConfig) {
+    pretty_print_string("Package", &package.name, &message_config);
+    pretty_print_string("Version", &package.version, &message_config);
+    pretty_print_string("Architecture", &package.architecture, &message_config);
+    pretty_print_string("Section", &package.section, &message_config);
+    pretty_print_string("Priority", &package.priority, &message_config);
+    pretty_print_relationships("Depends", &package.depends, &message_config);
+    pretty_print_relationships("Pre-Depends", &package.pre_depends, &message_config);
+    pretty_print_relationships("Recommends", &package.recommends, &message_config);
+    pretty_print_relationships("Suggests", &package.suggests, &message_config);
+    pretty_print_relationships("Enhances", &package.enhances, &message_config);
+    pretty_print_relationships("Breaks", &package.breaks, &message_config);
+    pretty_print_relationships("Conflicts", &package.conflicts, &message_config);
+    pretty_print_relationships("Provides", &package.provides, &message_config);
+    pretty_print_relationships("Replaces", &package.replaces, &message_config);
+    if package.is_essential == true {
+        pretty_print_string("Essential", "yes", &message_config);
+    };
+    if package.is_build_essential == true {
+        pretty_print_string("Build-Essential", "yes", &message_config);
+    };
+    pretty_print_string(
+        "File Size",
+        &format!(
+            "{:.2}",
+            &Byte::from_u64_with_unit(package.file_size, Unit::B)
+                .unwrap()
+                .get_appropriate_unit(UnitType::Binary),
+        ),
+        &message_config,
+    );
+    pretty_print_string(
+        "Installed Size",
+        &format!(
+            "{:.2}",
+            &Byte::from_u64_with_unit(package.installed_size, Unit::KiB)
+                .unwrap()
+                .get_appropriate_unit(UnitType::Binary),
+        ),
+        &message_config,
+    );
+    pretty_print_string("Maintainer", &package.maintainer, &message_config);
+    pretty_print_string("Description", &package.description, &message_config);
+    pretty_print_string("Homepage", &package.homepage, &message_config);
+    pretty_print_string("Origin Suite", &package.origin_suite, &message_config);
+    pretty_print_string(
+        "Origin Component",
+        &package.origin_component,
+        &message_config,
+    );
+    pretty_print_string(
+        "Origin Architecture",
+        &package.origin_architecture,
+        &message_config,
+    );
+    pretty_print_string(
+        "Origin URI",
+        &format!(
+            "{}{}/{}",
+            package.origin_uri_scheme, package.origin_uri_path, package.file_name
+        ),
+        &message_config,
+    );
 }

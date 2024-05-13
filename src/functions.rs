@@ -463,11 +463,11 @@ pub fn print_packages_dynamically(
             version_length = package.version.len() as u16;
         };
 
-        if (package.suite.len() as u16 + package.component.len() as u16)
+        if (package.origin_suite.len() as u16 + package.origin_component.len() as u16)
             > suite_and_component_length
         {
             suite_and_component_length =
-                package.suite.len() as u16 + package.component.len() as u16;
+                package.origin_suite.len() as u16 + package.origin_component.len() as u16;
         };
 
         if package.architecture.len() as u16 > architecture_length {
@@ -662,7 +662,7 @@ pub fn print_packages_dynamically(
             space_and_truncate_string(&package.name, name_length),
             space_and_truncate_string(&package.version, version_length),
             space_and_truncate_string(
-                &format!("{}/{}", &package.suite, &package.component),
+                &format!("{}/{}", &package.origin_suite, &package.origin_component),
                 suite_and_component_length,
             ),
             space_and_truncate_string(&package.architecture, architecture_length),
@@ -934,15 +934,18 @@ pub fn download_packages(
     let mut architecture_length: u16 = 0;
 
     for package in target_package_set {
-        if (package.uri_scheme.len() as u16 + package.uri_path.len() as u16) > full_uri_length {
-            full_uri_length = package.uri_scheme.len() as u16 + package.uri_path.len() as u16;
+        if (package.origin_uri_scheme.len() as u16 + package.origin_uri_path.len() as u16)
+            > full_uri_length
+        {
+            full_uri_length =
+                package.origin_uri_scheme.len() as u16 + package.origin_uri_path.len() as u16;
         };
 
-        if (package.suite.len() as u16 + 1 + package.component.len() as u16)
+        if (package.origin_suite.len() as u16 + 1 + package.origin_component.len() as u16)
             > suite_and_component_length
         {
             suite_and_component_length =
-                package.suite.len() as u16 + 1 + package.component.len() as u16;
+                package.origin_suite.len() as u16 + 1 + package.origin_component.len() as u16;
         };
 
         if package.name.len() as u16 > name_length {
@@ -970,11 +973,11 @@ pub fn download_packages(
                 counter_spacing
             ),
             space_and_truncate_string(
-                &format!("{}{}", package.uri_scheme, package.uri_path),
+                &format!("{}{}", package.origin_uri_scheme, package.origin_uri_path),
                 full_uri_length
             ),
             space_and_truncate_string(
-                &format!("{}/{}", package.suite, package.component),
+                &format!("{}/{}", package.origin_suite, package.origin_component),
                 suite_and_component_length
             ),
             space_and_truncate_string(&package.name, name_length),
@@ -993,7 +996,7 @@ pub fn download_packages(
             .block_on(download_file(
                 &format!(
                     "{}{}/{}",
-                    package.uri_scheme, package.uri_path, package.file_name
+                    package.origin_uri_scheme, package.origin_uri_path, package.file_name
                 ),
                 &output_directory,
                 &message_config,

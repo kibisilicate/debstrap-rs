@@ -273,6 +273,7 @@ See debstrap(8) for more information."
     let mut essential_hooks: Vec<String> = Vec::new();
     let mut target_hooks: Vec<String> = Vec::new();
     let mut done_hooks: Vec<String> = Vec::new();
+    let mut packages_to_print_then_exit: Vec<String> = Vec::new();
     let mut discard_output_on_exit: bool = false;
     let mut assume_user_input: Option<String> = None;
 
@@ -457,6 +458,12 @@ See debstrap(8) for more information."
                 done_hooks.push(String::from(
                     argument.replacen("--hook-done=", "", 1).trim(),
                 ));
+            }
+            _ if argument.starts_with("-F=") => {
+                packages_to_print_then_exit.extend(parse_list_of_values("-F=", &argument));
+            }
+            _ if argument.starts_with("--find=") => {
+                packages_to_print_then_exit.extend(parse_list_of_values("--find=", &argument));
             }
             "-D" | "--discard" | "--discard-output" => {
                 discard_output_on_exit = true;
@@ -1645,11 +1652,11 @@ See debstrap(8) for more information."
                                 {
                                     let package: Package = Package::new(
                                         &entry,
-                                        &scheme,
-                                        &path,
                                         &suite,
                                         &component,
                                         &architecture,
+                                        &scheme,
+                                        &path,
                                     );
 
                                     let package_name: String = package.name.clone();
@@ -1692,6 +1699,57 @@ See debstrap(8) for more information."
     }
 
     let package_database: HashMap<String, Vec<Package>> = package_database;
+
+    //////////////////////////////////////////////
+
+    if packages_to_print_then_exit.len() != 0 {
+        packages_to_print_then_exit.sort_unstable();
+        packages_to_print_then_exit.dedup();
+
+        println!();
+
+        for package in packages_to_print_then_exit {
+            match package_database.get(&package) {
+                Some(result) => {
+                    for entry in result {
+                        pretty_print_package(&entry, &message_config);
+                        println!();
+                    }
+                }
+                None => {
+                    print_message(
+                        "error",
+                        &format!("failed to find package: \"{package}\""),
+                        &message_config,
+                    );
+
+                    clean_up_on_exit(
+                        &workspace_directory,
+                        None,
+                        &target_actions_to_skip,
+                        &message_config,
+                    )
+                    .unwrap_or(());
+
+                    return ExitCode::from(1);
+                }
+            };
+        }
+
+        if clean_up_on_exit(
+            &workspace_directory,
+            None,
+            &target_actions_to_skip,
+            &message_config,
+        )
+        .is_err()
+            == true
+        {
+            return ExitCode::from(1);
+        };
+
+        return ExitCode::from(0);
+    };
 
     //////////////////////////////////////////////
 

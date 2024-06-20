@@ -159,6 +159,10 @@ and values can be separated by commas and/or whitespace.
 
     See the section **HOOKS** for more information.
 
+**-F**, **\--find**=*PACKAGE*\[,*PACKAGE*,\...\]
+:   List of packages to print information about then exit.
+    Returns an error if any specified package isn't found.
+
 **-D**, **\--discard**, **\--discard-output**
 :   Uses a sub-directory inside the temporary workspace as the output directory of the target which is deleted on exit unless the option **\--skip=workspace-removal** is used.
 

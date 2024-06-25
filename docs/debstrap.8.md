@@ -188,7 +188,7 @@ The following formats are supported by **debstrap**:
 
 **directory**, **dir**
 :   Uses the output directory as the target directory for the bootstrap.
-    The output directory must either be empty or only contain the directories \'**/boot**\', \'**/efi**\', or \'**/lost+found**\'.
+    The output directory must either be empty or only contain the items \'**/boot**\', \'**/efi**\', \'**/lost+found**\', or \'**swapfile**\'.
     This can be skipped if the option **\--skip=output-directory-check** is used.
 
 **tarball**, **tar**

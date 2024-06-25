@@ -801,7 +801,7 @@ See debstrap(8) for more information."
 
         for item in directory_contents {
             match &item as &str {
-                "boot" | "efi" | "lost+found" => {}
+                "boot" | "efi" | "lost+found" | "swapfile" => {}
                 _ => {
                     print_message("error", "output directory is not empty.", &message_config);
                     return ExitCode::from(1);

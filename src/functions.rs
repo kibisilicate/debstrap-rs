@@ -1930,7 +1930,7 @@ pub fn run_hooks(
 
         print_message(
             "debug",
-            &format!("running hook no. {counter}"),
+            &format!("running {kind} hook no. {counter} {{\n{shell_code}\n}}"),
             &message_config,
         );
 

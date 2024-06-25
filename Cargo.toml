@@ -1,6 +1,6 @@
 [package]
 name = "debstrap"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Stephany Panagaea"]
 edition = "2021"
 rust-version = "1.73"

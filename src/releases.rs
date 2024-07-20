@@ -1,4 +1,4 @@
-pub const DEBIAN_CURRENT_SUITES: [&str; 10] = [
+const DEBIAN_CURRENT_SUITES: [&str; 10] = [
     "unstable",     // alias for "sid"
     "testing",      // alias for "trixie"
     "stable",       // alias for "bookworm"
@@ -11,20 +11,20 @@ pub const DEBIAN_CURRENT_SUITES: [&str; 10] = [
     "buster",       // Debian 10
 ];
 
-pub const DEBIAN_OBSOLUTE_SUITES: [&str; 2] = [
+const DEBIAN_OBSOLUTE_SUITES: [&str; 2] = [
     "stretch", // Debian 9
     "jessie",  // Debian 8
 ];
 
-pub const DEBIAN_CURRENT_MIRROR: &str = "https://deb.debian.org/debian";
+const DEBIAN_CURRENT_MIRROR: &str = "https://deb.debian.org/debian";
 
-pub const DEBIAN_PORTS_MIRROR: &str = "https://deb.debian.org/debian-ports";
+const DEBIAN_PORTS_MIRROR: &str = "https://deb.debian.org/debian-ports";
 
-pub const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
+const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub const UBUNTU_CURRENT_SUITES: [&str; 10] = [
+const UBUNTU_CURRENT_SUITES: [&str; 10] = [
     "devel",    // alias for latest version
     "oracular", // Ubuntu 24.10
     "noble",    // Ubuntu 24.04 LTS
@@ -37,7 +37,7 @@ pub const UBUNTU_CURRENT_SUITES: [&str; 10] = [
     "trusty",   // Ubuntu 14.04 LTS
 ];
 
-pub const UBUNTU_OBSOLETE_SUITES: [&str; 17] = [
+const UBUNTU_OBSOLETE_SUITES: [&str; 17] = [
     "kinetic", // Ubuntu 22.10
     "impish",  // Ubuntu 21.10
     "hirsute", // Ubuntu 21.04
@@ -57,11 +57,11 @@ pub const UBUNTU_OBSOLETE_SUITES: [&str; 17] = [
     "precise", // Ubuntu 12.04 LTS
 ];
 
-pub const UBUNTU_CURRENT_MIRROR: &str = "http://archive.ubuntu.com/ubuntu";
+const UBUNTU_CURRENT_MIRROR: &str = "http://archive.ubuntu.com/ubuntu";
 
-pub const UBUNTU_PORTS_MIRROR: &str = "http://ports.ubuntu.com/ubuntu-ports";
+const UBUNTU_PORTS_MIRROR: &str = "http://ports.ubuntu.com/ubuntu-ports";
 
-pub const UBUNTU_OBSOLETE_MIRROR: &str = "https://old-releases.ubuntu.com/ubuntu";
+const UBUNTU_OBSOLETE_MIRROR: &str = "https://old-releases.ubuntu.com/ubuntu";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -252,27 +252,29 @@ pub fn default_sources_list_format(suite: &str) -> String {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub fn default_sources_signed_by(suite: &str, architecture: &str) -> String {
-    let mut keyring_file_name: String = String::new();
+    let mut keyring_file_location: String = String::new();
 
     if DEBIAN_CURRENT_SUITES.contains(&suite) == true {
         match architecture {
             "amd64" | "arm64" | "armel" | "armhf" | "i386" | "mips64el" | "mipsel" | "ppc64el"
             | "riscv64" | "s390x" => {
-                keyring_file_name = String::from("debian-archive-keyring.gpg");
+                keyring_file_location =
+                    String::from("/usr/share/keyrings/debian-archive-keyring.gpg");
             }
             _ => {
-                keyring_file_name = String::from("debian-ports-archive-keyring.gpg");
+                keyring_file_location =
+                    String::from("/usr/share/keyrings/debian-ports-archive-keyring.gpg");
             }
         };
     } else if DEBIAN_OBSOLUTE_SUITES.contains(&suite) == true {
-        keyring_file_name = String::from("debian-archive-keyring.gpg");
+        keyring_file_location = String::from("/usr/share/keyrings/debian-archive-keyring.gpg");
     } else if UBUNTU_CURRENT_SUITES.contains(&suite) == true
         || UBUNTU_OBSOLETE_SUITES.contains(&suite) == true
     {
-        keyring_file_name = String::from("ubuntu-archive-keyring.gpg");
+        keyring_file_location = String::from("/usr/share/keyrings/ubuntu-archive-keyring.gpg");
     };
 
-    return keyring_file_name;
+    return keyring_file_location;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

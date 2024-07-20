@@ -9,6 +9,7 @@ pub struct SourcesEntry {
     pub suites: Vec<String>,
     pub components: Vec<String>,
     pub architectures: Vec<String>,
+    pub signed_by: Option<String>,
 }
 
 pub fn parse_sources_file(
@@ -30,6 +31,7 @@ pub fn parse_sources_file(
                 let mut entries_suites: Vec<String> = Vec::new();
                 let mut entries_components: Vec<String> = Vec::new();
                 let mut entries_architectures: Vec<String> = Vec::new();
+                let mut entries_signed_by: String = String::new();
 
                 for line in entry.lines() {
                     match &line as &str {
@@ -44,6 +46,9 @@ pub fn parse_sources_file(
                         }
                         _ if line.starts_with("Architectures: ") => {
                             entries_architectures = parse_list_of_values("Architectures: ", &line);
+                        }
+                        _ if line.starts_with("Signed-By: ") => {
+                            entries_signed_by = line.replacen("Signed-By: ", "", 1);
                         }
                         _ => {}
                     };
@@ -169,11 +174,20 @@ pub fn parse_sources_file(
 
                 //////////////////////////////////
 
+                let mut parsed_signed_by: Option<String> = None;
+
+                if entries_signed_by.is_empty() == false {
+                    parsed_signed_by = Some(entries_signed_by);
+                };
+
+                //////////////////////////////////
+
                 let sources_entry: SourcesEntry = SourcesEntry {
                     uris: parsed_uris,
                     suites: parsed_suites,
                     components: parsed_components,
                     architectures: parsed_architectures,
+                    signed_by: parsed_signed_by,
                 };
 
                 sources_list.push(sources_entry);
@@ -199,6 +213,7 @@ pub fn create_sources_list(
     input_suites: &Vec<String>,
     input_components: &Vec<String>,
     input_architectures: &Vec<String>,
+    input_signed_by: &str,
     message_config: &MessageConfig,
 ) -> Result<Vec<SourcesEntry>, ()> {
     if input_suites.len() == 0 {
@@ -314,11 +329,28 @@ pub fn create_sources_list(
 
     //////////////////////////////////////////////
 
+    let parsed_signed_by: Option<String>;
+
+    match input_signed_by.is_empty() {
+        true => {
+            parsed_signed_by = Some(default_sources_signed_by(
+                &parsed_suites[0],
+                &parsed_architectures[0],
+            ));
+        }
+        false => {
+            parsed_signed_by = Some(String::from(input_signed_by));
+        }
+    };
+
+    //////////////////////////////////////////////
+
     let sources_list: Vec<SourcesEntry> = vec![SourcesEntry {
         uris: parsed_uris,
         suites: parsed_suites,
         components: parsed_components,
         architectures: parsed_architectures,
+        signed_by: parsed_signed_by,
     }];
 
     return Ok(sources_list);
@@ -361,7 +393,6 @@ pub fn parse_uri(uri_to_parse: &str) -> Result<(String, String), ()> {
 
 pub fn create_sources_list_file(
     sources_list: &Vec<SourcesEntry>,
-    sources_signed_by: &str,
     format: &str,
     output_directory: &str,
     message_config: &MessageConfig,
@@ -415,12 +446,10 @@ Types: deb deb-src
 URIs: {}
 Suites: {}
 Components: {}
-Signed-By: /usr/share/keyrings/{}
 ",
                         format!("{:?}", &full_uris).replace(['[', ']', '"', ','], ""),
                         format!("{:?}", &entry.suites).replace(['[', ']', '"', ','], ""),
                         format!("{:?}", &entry.components).replace(['[', ']', '"', ','], ""),
-                        sources_signed_by,
                     ),
                     &message_config,
                 )
@@ -428,6 +457,19 @@ Signed-By: /usr/share/keyrings/{}
                     == true
                 {
                     return Err(());
+                };
+
+                if entry.signed_by.is_some() == true {
+                    if append_file(
+                        &format!("{output_directory}/sources.sources"),
+                        &format!("Signed-By: {}\n", &entry.signed_by.clone().unwrap()),
+                        &message_config,
+                    )
+                    .is_err()
+                        == true
+                    {
+                        return Err(());
+                    };
                 };
             }
         }

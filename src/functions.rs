@@ -707,47 +707,99 @@ pub fn print_packages_dynamically(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub async fn download_file(
+pub fn does_network_resource_exist(uri: &str) -> bool {
+    async fn does_network_resource_exist(uri: &str) -> Result<(), ()> {
+        match reqwest::get(uri).await {
+            Ok(result) => {
+                if result.status().is_success() == true {
+                    return Ok(());
+                } else {
+                    return Err(());
+                };
+            }
+            Err(..) => return Err(()),
+        };
+    }
+
+    match tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(does_network_resource_exist(uri))
+    {
+        Ok(..) => return true,
+        Err(..) => return false,
+    };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn download_file(
     uri: &str,
     output_directory: &str,
     message_config: &MessageConfig,
-) -> Result<(), String> {
-    let server_response = reqwest::get(uri).await;
+) -> Result<(), ()> {
+    async fn download_file(
+        uri: &str,
+        output_directory: &str,
+        message_config: &MessageConfig,
+    ) -> Result<(), ()> {
+        let file_name: String =
+            String::from(Path::new(&uri).file_name().unwrap().to_string_lossy());
 
-    let filename: String = String::from(Path::new(&uri).file_name().unwrap().to_string_lossy());
+        match reqwest::get(uri).await {
+            Ok(result) => {
+                if result.status().is_success() == true {
+                    let mut output_file =
+                        std::fs::File::create(format!("{output_directory}/{file_name}")).unwrap();
+
+                    let mut binary_contents = Cursor::new(result.bytes().await.unwrap());
+
+                    if std::io::copy(&mut binary_contents, &mut output_file).is_err() == true {
+                        print_message(
+                            "error",
+                            &format!("failed to write file: \"{file_name}\""),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                } else {
+                    print_message(
+                        "error",
+                        &format!(
+                            "failed to download file: \"{file_name}\" ({} {})",
+                            result.status().as_u16(),
+                            result.status().canonical_reason().unwrap(),
+                        ),
+                        &message_config,
+                    );
+
+                    return Err(());
+                };
+            }
+            Err(result) => {
+                print_message(
+                    "error",
+                    &format!(
+                        "failed to download file: \"{file_name}\" ({})",
+                        result.source().unwrap(),
+                    ),
+                    &message_config,
+                );
+                return Err(());
+            }
+        };
+
+        return Ok(());
+    }
 
     print_message("debug", &format!("downloading: \"{uri}\""), &message_config);
 
-    match server_response {
-        Ok(result) => {
-            if result.status().is_success() == true {
-                let mut output_file =
-                    std::fs::File::create(format!("{output_directory}/{filename}")).unwrap();
-
-                let mut binary_contents = Cursor::new(result.bytes().await.unwrap());
-
-                if std::io::copy(&mut binary_contents, &mut output_file).is_err() == true {
-                    return Err(format!("failed to write file: \"{filename}\""));
-                };
-            } else {
-                let status_code: u16 = result.status().as_u16();
-
-                let reason: String = String::from(result.status().canonical_reason().unwrap());
-
-                return Err(format!(
-                    "failed to download file: \"{filename}\" ({status_code} {reason})"
-                ));
-            };
-        }
-        Err(result) => {
-            return Err(format!(
-                "failed to download file: \"{filename}\" ({})",
-                result.source().unwrap()
-            ));
-        }
+    match tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(download_file(uri, output_directory, message_config))
+    {
+        Ok(..) => return Ok(()),
+        Err(..) => return Err(()),
     };
-
-    return Ok(());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -814,9 +866,7 @@ pub fn download_package_lists(
                             format!("{scheme}{path} {suite}/{component} {architecture} Packages"),
                         );
 
-                        let mut did_package_list_download: bool = false;
-
-                        let package_list_uri: String = format!(
+                        let package_list_parent_path: String = format!(
                             "{scheme}{path}/dists/{suite}/{component}/binary-{architecture}"
                         );
 
@@ -827,63 +877,57 @@ pub fn download_package_lists(
                             String::from("Packages"),
                         ]);
 
+                        let mut did_package_list_download: bool = false;
+
                         for file_name in potential_file_names {
-                            match tokio::runtime::Runtime::new()
-                                .unwrap()
-                                .block_on(download_file(
-                                    &format!("{package_list_uri}/{file_name}"),
+                            let package_list_uri: String =
+                                format!("{package_list_parent_path}/{file_name}");
+
+                            if does_network_resource_exist(&package_list_uri) == true {
+                                match download_file(
+                                    &package_list_uri,
                                     &output_directory,
                                     &message_config,
-                                )) {
-                                Ok(..) => {
-                                    did_package_list_download = true;
+                                ) {
+                                    Ok(..) => {
+                                        did_package_list_download = true;
 
-                                    if decompress_file(
-                                        &format!("{output_directory}/{file_name}"),
-                                        &message_config,
-                                    )
-                                    .is_err()
-                                        == true
-                                    {
-                                        return Err(());
-                                    };
-
-                                    let package_list_file_name: String = format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages").replace("/", "_");
-
-                                    if std::fs::rename(
-                                        format!("{output_directory}/Packages"),
-                                        format!("{output_directory}/{package_list_file_name}"),
-                                    )
-                                    .is_err()
-                                        == true
-                                    {
-                                        print_message(
-                                            "error",
-                                            &format!("failed to rename file: \"Packages\""),
+                                        if decompress_file(
+                                            &format!("{output_directory}/{file_name}"),
                                             &message_config,
-                                        );
+                                        )
+                                        .is_err()
+                                            == true
+                                        {
+                                            return Err(());
+                                        };
 
-                                        return Err(());
-                                    };
+                                        let package_list_file_name: String = format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages").replace("/", "_");
 
-                                    break;
-                                }
-                                Err(message) => {
-                                    print_message(
-                                        "debug",
-                                        &format!("{message}, skipping."),
-                                        &message_config,
-                                    );
-                                }
+                                        if std::fs::rename(
+                                            format!("{output_directory}/Packages"),
+                                            format!("{output_directory}/{package_list_file_name}"),
+                                        )
+                                        .is_err()
+                                            == true
+                                        {
+                                            print_message(
+                                                "error",
+                                                &format!("failed to rename file: \"Packages\""),
+                                                &message_config,
+                                            );
+                                            return Err(());
+                                        };
+
+                                        break;
+                                    }
+                                    Err(..) => return Err(()),
+                                };
                             };
                         }
 
                         if did_package_list_download == false {
-                            print_message(
-                                "error",
-                                "failed to download package list.",
-                                &message_config,
-                            );
+                            print_message("error", "failed to find package list.", &message_config);
                             return Err(());
                         };
                     }
@@ -991,22 +1035,18 @@ pub fn download_packages(
             ),
         );
 
-        match tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(download_file(
-                &format!(
-                    "{}{}/{}",
-                    package.origin_uri_scheme, package.origin_uri_path, package.file_name
-                ),
-                &output_directory,
-                &message_config,
-            )) {
-            Ok(..) => {}
-            Err(message) => {
-                print_message("error", &message, &message_config);
-
-                return Err(());
-            }
+        if download_file(
+            &format!(
+                "{}{}/{}",
+                package.origin_uri_scheme, package.origin_uri_path, package.file_name
+            ),
+            &output_directory,
+            &message_config,
+        )
+        .is_err()
+            == true
+        {
+            return Err(());
         };
     }
 

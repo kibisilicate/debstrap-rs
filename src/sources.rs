@@ -1,5 +1,5 @@
-use crate::functions::*;
 use crate::defaults::*;
+use crate::functions::*;
 
 use cmd_lib::run_fun;
 

@@ -361,7 +361,7 @@ pub fn decompress_file(
         );
 
         match &file_extension as &str {
-            "xz" => {
+            "xz" | "lzma" => {
                 if run_cmd!(xz --decompress "$input_file_location" 2> /dev/stdout).is_err() == true
                 {
                     print_message(

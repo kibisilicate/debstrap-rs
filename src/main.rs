@@ -254,7 +254,6 @@ See debstrap(8) for more information."
     let mut chosen_suites: Vec<String> = Vec::new();
     let mut chosen_components: Vec<String> = Vec::new();
     let mut chosen_architectures: Vec<String> = Vec::new();
-    let mut chosen_sources_signed_by: String = String::new();
     let mut chosen_variant: String = String::new();
     let mut custom_package_set: Vec<String> = Vec::new();
     let mut chosen_packages_to_include: Vec<String> = Vec::new();
@@ -353,10 +352,6 @@ See debstrap(8) for more information."
             }
             _ if argument.starts_with("--architectures=") => {
                 chosen_architectures.extend(parse_list_of_values("--architectures=", &argument));
-            }
-            _ if argument.starts_with("--signed-by=") => {
-                chosen_sources_signed_by =
-                    String::from(argument.replacen("--signed-by=", "", 1).trim());
             }
             _ if argument.starts_with("-v=") => {
                 chosen_variant = String::from(argument.replacen("-v=", "", 1).trim());
@@ -841,7 +836,6 @@ See debstrap(8) for more information."
                 || chosen_suites.len() != 0
                 || chosen_components.len() != 0
                 || chosen_architectures.len() != 0
-                || chosen_sources_signed_by.len() != 0
             {
                 print_message(
                     "warning",
@@ -974,7 +968,6 @@ See debstrap(8) for more information."
                 &chosen_suites,
                 &chosen_components,
                 &chosen_architectures,
-                &chosen_sources_signed_by,
                 &message_config,
             ) {
                 Ok(result) => {

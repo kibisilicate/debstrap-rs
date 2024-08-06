@@ -213,7 +213,6 @@ pub fn create_sources_list(
     input_suites: &Vec<String>,
     input_components: &Vec<String>,
     input_architectures: &Vec<String>,
-    input_signed_by: &str,
     message_config: &MessageConfig,
 ) -> Result<Vec<SourcesEntry>, ()> {
     if input_suites.len() == 0 {
@@ -329,19 +328,10 @@ pub fn create_sources_list(
 
     //////////////////////////////////////////////
 
-    let parsed_signed_by: Option<String>;
-
-    match input_signed_by.is_empty() {
-        true => {
-            parsed_signed_by = Some(default_sources_signed_by(
-                &parsed_suites[0],
-                &parsed_architectures[0],
-            ));
-        }
-        false => {
-            parsed_signed_by = Some(String::from(input_signed_by));
-        }
-    };
+    let signed_by: Option<String> = Some(default_sources_signed_by(
+        &parsed_suites[0],
+        &parsed_architectures[0],
+    ));
 
     //////////////////////////////////////////////
 
@@ -350,7 +340,7 @@ pub fn create_sources_list(
         suites: parsed_suites,
         components: parsed_components,
         architectures: parsed_architectures,
-        signed_by: parsed_signed_by,
+        signed_by: signed_by,
     }];
 
     return Ok(sources_list);

@@ -1,11 +1,11 @@
 use algorithms::*;
 pub mod algorithms;
+use defaults::*;
+pub mod defaults;
 use functions::*;
 pub mod functions;
 use package::*;
 pub mod package;
-use releases::*;
-pub mod releases;
 use sources::*;
 pub mod sources;
 

@@ -1,10 +1,8 @@
-use crate::algorithms::*;
 use crate::package::*;
 use crate::sources::*;
 
 use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Write};
@@ -273,67 +271,6 @@ pub fn append_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub fn create_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
-    match Path::new(directory_path).exists() {
-        true => return Ok(()),
-        false => {
-            print_message(
-                "debug",
-                &format!("creating directory: \"{directory_path}\""),
-                &message_config,
-            );
-
-            match std::fs::create_dir(directory_path) {
-                Ok(..) => return Ok(()),
-                Err(..) => {
-                    print_message(
-                        "error",
-                        &format!("failed to create directory: \"{directory_path}\""),
-                        &message_config,
-                    );
-                    return Err(());
-                }
-            };
-        }
-    };
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub fn remove_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
-    match Path::new(directory_path).exists() {
-        true => {
-            print_message(
-                "debug",
-                &format!("removing directory: \"{directory_path}\""),
-                &message_config,
-            );
-
-            match std::fs::remove_dir(directory_path) {
-                Ok(..) => return Ok(()),
-                Err(..) => {
-                    print_message(
-                        "error",
-                        &format!("failed to remove directory: \"{directory_path}\""),
-                        &message_config,
-                    );
-                    return Err(());
-                }
-            };
-        }
-        false => {
-            print_message(
-                "error",
-                &format!("directory: \"{directory_path}\" does not exist."),
-                &message_config,
-            );
-            return Err(());
-        }
-    };
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 pub fn move_file(from: String, to: String) -> Result<(), ()> {
     if std::fs::copy(&from, to).is_err() == true {
         return Err(());
@@ -416,293 +353,63 @@ pub fn decompress_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub fn print_packages_dynamically(
-    initial_package_set: &Vec<Package>,
-    target_package_set: &Vec<Package>,
-    message_config: &MessageConfig,
-) -> Result<(), ()> {
-    let counter_spacing: u16;
+pub fn create_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
+    match Path::new(directory_path).exists() {
+        true => return Ok(()),
+        false => {
+            print_message(
+                "debug",
+                &format!("creating directory: \"{directory_path}\""),
+                &message_config,
+            );
 
-    match target_package_set.len() {
-        length if length < 10 => {
-            counter_spacing = 2;
-        }
-        length if length < 100 => {
-            counter_spacing = 3;
-        }
-        length if length < 1000 => {
-            counter_spacing = 4;
-        }
-        length if length < 10000 => {
-            counter_spacing = 5;
-        }
-        length if length < 100000 => {
-            counter_spacing = 6;
-        }
-        _ => {
-            print_message("error", "invalid size.", &message_config);
-
-            return Err(());
-        }
-    };
-
-    let mut name_length: u16 = 0;
-    let mut version_length: u16 = 0;
-    let mut suite_and_component_length: u16 = 0;
-    let mut architecture_length: u16 = 0;
-    let mut description_length: u16 = 0;
-    let mut total_packages_file_size: u64 = 0;
-    let mut total_packages_installed_size: u64 = 0;
-
-    for package in target_package_set {
-        if package.name.len() as u16 > name_length {
-            name_length = package.name.len() as u16;
-        };
-
-        if package.version.len() as u16 > version_length {
-            version_length = package.version.len() as u16;
-        };
-
-        if (package.origin_suite.len() as u16 + package.origin_component.len() as u16)
-            > suite_and_component_length
-        {
-            suite_and_component_length =
-                package.origin_suite.len() as u16 + package.origin_component.len() as u16;
-        };
-
-        if package.architecture.len() as u16 > architecture_length {
-            architecture_length = package.architecture.len() as u16;
-        };
-
-        if package.description.len() as u16 > description_length {
-            description_length = package.description.len() as u16;
-        };
-
-        total_packages_file_size += package.file_size;
-
-        total_packages_installed_size += package.installed_size;
-    }
-
-    let min_name_length: u16 = 4;
-    let min_version_length: u16 = 7;
-    let min_suite_and_component_length: u16 = 15;
-    let min_architecture_length: u16 = 12;
-    let min_description_length: u16 = 11;
-
-    if name_length < min_name_length {
-        name_length = min_name_length;
-    };
-
-    if version_length < min_version_length {
-        version_length = min_version_length;
-    };
-
-    if suite_and_component_length < min_suite_and_component_length {
-        suite_and_component_length = min_suite_and_component_length;
-    };
-
-    if architecture_length < min_architecture_length {
-        architecture_length = min_architecture_length;
-    };
-
-    if description_length < min_description_length {
-        description_length = min_description_length;
-    };
-
-    //////////////////////////////////////////////
-
-    match termion::terminal_size() {
-        Ok(result) => {
-            let max_width = result.0 - 2;
-
-            let mut current_width: u16 = (&counter_spacing
-                + &name_length
-                + &version_length
-                + &suite_and_component_length
-                + &architecture_length
-                + &description_length
-                + 10
-                + 7)
-            .try_into()
-            .unwrap();
-
-            let mut increase_or_decrease: String = String::new();
-
-            if current_width < max_width {
-                increase_or_decrease = String::from("increase");
-            };
-
-            if current_width > max_width {
-                increase_or_decrease = String::from("decrease");
-            };
-
-            if increase_or_decrease.is_empty() == false {
-                let mut length_to_change: String = String::from("description");
-
-                loop {
-                    current_width = (&counter_spacing
-                        + &name_length
-                        + &version_length
-                        + &suite_and_component_length
-                        + &architecture_length
-                        + &description_length
-                        + 10
-                        + 7)
-                    .try_into()
-                    .unwrap();
-
-                    if current_width == max_width {
-                        break;
-                    } else {
-                        match &length_to_change as &str {
-                            "description" => {
-                                match &increase_or_decrease as &str {
-                                    "increase" => description_length += 1,
-                                    "decrease" => {
-                                        if description_length > min_description_length {
-                                            description_length -= 1;
-                                        };
-                                    }
-                                    _ => {}
-                                };
-                                length_to_change = String::from("architecture");
-                            }
-                            "architecture" => {
-                                match &increase_or_decrease as &str {
-                                    "increase" => architecture_length += 1,
-                                    "decrease" => {
-                                        if architecture_length > min_architecture_length {
-                                            architecture_length -= 1;
-                                        };
-                                    }
-                                    _ => {}
-                                };
-                                length_to_change = String::from("suite_and_component");
-                            }
-                            "suite_and_component" => {
-                                match &increase_or_decrease as &str {
-                                    "increase" => suite_and_component_length += 1,
-                                    "decrease" => {
-                                        if suite_and_component_length
-                                            > min_suite_and_component_length
-                                        {
-                                            suite_and_component_length -= 1;
-                                        };
-                                    }
-                                    _ => {}
-                                };
-                                length_to_change = String::from("version");
-                            }
-                            "version" => {
-                                match &increase_or_decrease as &str {
-                                    "increase" => version_length += 1,
-                                    "decrease" => {
-                                        if version_length > min_version_length {
-                                            version_length -= 1;
-                                        };
-                                    }
-                                    _ => {}
-                                };
-                                length_to_change = String::from("name");
-                            }
-                            "name" => {
-                                match &increase_or_decrease as &str {
-                                    "increase" => name_length += 1,
-                                    "decrease" => {
-                                        if name_length > min_name_length {
-                                            name_length -= 1;
-                                        };
-                                    }
-                                    _ => {}
-                                };
-                                length_to_change = String::from("description");
-                            }
-                            _ => {}
-                        };
-
-                        continue;
-                    };
+            match std::fs::create_dir(directory_path) {
+                Ok(..) => return Ok(()),
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("failed to create directory: \"{directory_path}\""),
+                        &message_config,
+                    );
+                    return Err(());
                 }
             };
         }
-        Err(..) => {}
     };
+}
 
-    let mut bold_start: String = String::new();
-    let mut bold_end: String = String::new();
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if message_config.color == true {
-        bold_start = String::from("\x1b[01m");
-        bold_end = String::from("\x1b[00m");
+pub fn remove_directory(directory_path: &str, message_config: &MessageConfig) -> Result<(), ()> {
+    match Path::new(directory_path).exists() {
+        true => {
+            print_message(
+                "debug",
+                &format!("removing directory: \"{directory_path}\""),
+                &message_config,
+            );
+
+            match std::fs::remove_dir(directory_path) {
+                Ok(..) => return Ok(()),
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("failed to remove directory: \"{directory_path}\""),
+                        &message_config,
+                    );
+                    return Err(());
+                }
+            };
+        }
+        false => {
+            print_message(
+                "error",
+                &format!("directory: \"{directory_path}\" does not exist."),
+                &message_config,
+            );
+            return Err(());
+        }
     };
-
-    let mut blank_counter_spacing: String = String::from(" ");
-
-    for _value in 1..counter_spacing {
-        blank_counter_spacing.push(' ');
-    }
-
-    println!(
-        "\n{bold_start}{blank_counter_spacing} {} {} {} {} {} Size{bold_end}",
-        space_and_truncate_string("Name", name_length),
-        space_and_truncate_string("Version", version_length),
-        space_and_truncate_string("Suite/Component", suite_and_component_length),
-        space_and_truncate_string("Architecture", architecture_length),
-        space_and_truncate_string("Description", description_length),
-    );
-
-    let mut counter: u16 = 0;
-
-    for package in target_package_set {
-        counter += 1;
-
-        println!(
-            "{} {} {} {} {} {} {}",
-            space_and_truncate_string(&format!("{counter}."), counter_spacing),
-            space_and_truncate_string(&package.name, name_length),
-            space_and_truncate_string(&package.version, version_length),
-            space_and_truncate_string(
-                &format!("{}/{}", &package.origin_suite, &package.origin_component),
-                suite_and_component_length,
-            ),
-            space_and_truncate_string(&package.architecture, architecture_length),
-            space_and_truncate_string(&package.description, description_length),
-            format!(
-                "{:.2}",
-                &Byte::from_f64_with_unit(*&package.file_size as f64, Unit::B)
-                    .unwrap()
-                    .get_appropriate_unit(UnitType::Binary),
-            ),
-        );
-    }
-
-    let amount_of_dependencies: u16 =
-        target_package_set.len() as u16 - initial_package_set.len() as u16;
-
-    println!(
-        "\n{} initially, {} dependencies, {} packages total.",
-        initial_package_set.len(),
-        amount_of_dependencies,
-        target_package_set.len(),
-    );
-
-    println!(
-        "Total download size: {}\nTotal installed size: {}",
-        format!(
-            "{:.2}",
-            &Byte::from_u64_with_unit(total_packages_file_size, Unit::B)
-                .unwrap()
-                .get_appropriate_unit(UnitType::Binary),
-        ),
-        format!(
-            "{:.2}",
-            &Byte::from_u64_with_unit(total_packages_installed_size, Unit::KiB)
-                .unwrap()
-                .get_appropriate_unit(UnitType::Binary),
-        ),
-    );
-
-    return Ok(());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1049,443 +756,6 @@ pub fn download_packages(
             return Err(());
         };
     }
-
-    return Ok(());
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub fn separate_packages_by_priority(
-    package_database: &HashMap<String, Vec<Package>>,
-    input_directory: &str,
-    target_package_set: &Vec<Package>,
-    packages_to_prohibit: &Vec<String>,
-    packages_to_consider_essential: &Vec<String>,
-    packages_to_consider_non_essential: &Vec<String>,
-    target_extractor: &str,
-    output_directory: &str,
-    message_config: &MessageConfig,
-) -> Result<(), ()> {
-    let mut initial_essential_subset: Vec<Package> = Vec::new();
-    let mut initial_required_subset: Vec<Package> = Vec::new();
-    let mut initial_important_subset: Vec<Package> = Vec::new();
-    let mut initial_standard_subset: Vec<Package> = Vec::new();
-
-    for package in target_package_set {
-        if package.is_essential == true
-            || package.name == "usr-is-merged"
-            || package.name == "usrmerge"
-        {
-            initial_essential_subset.push(package.clone());
-        };
-
-        if package.priority == "required" || package.name == "apt" {
-            initial_required_subset.push(package.clone());
-        };
-
-        if package.priority == "important" {
-            initial_important_subset.push(package.clone());
-        };
-
-        if package.priority == "standard" {
-            initial_standard_subset.push(package.clone());
-        };
-    }
-
-    let mut is_awk_present: bool = false;
-
-    if is_awk_present == false {
-        for package in target_package_set {
-            if package.name == "mawk" {
-                initial_essential_subset.push(package.clone());
-                is_awk_present = true;
-                break;
-            };
-        }
-    };
-
-    if is_awk_present == false {
-        for package in target_package_set {
-            if package.name == "original-awk" {
-                initial_essential_subset.push(package.clone());
-                is_awk_present = true;
-                break;
-            };
-        }
-    };
-
-    if is_awk_present == false {
-        for package in target_package_set {
-            if package.name == "gawk" {
-                initial_essential_subset.push(package.clone());
-                is_awk_present = true;
-                break;
-            };
-        }
-    };
-
-    if is_awk_present == false {
-        print_message(
-            "error",
-            "no packages that provide: \"awk\" are present.",
-            &message_config,
-        );
-        return Err(());
-    };
-
-    initial_essential_subset.sort_unstable();
-    initial_essential_subset.dedup();
-
-    initial_required_subset.sort_unstable();
-    initial_required_subset.dedup();
-
-    initial_important_subset.sort_unstable();
-    initial_important_subset.dedup();
-
-    initial_standard_subset.sort_unstable();
-    initial_standard_subset.dedup();
-
-    //////////////////////////////////////////////
-
-    if packages_to_consider_essential.len() != 0 {
-        for included in packages_to_consider_essential {
-            if initial_essential_subset
-                .iter()
-                .any(|initial| &initial.name == included)
-                == true
-            {
-                print_message(
-                    "debug",
-                    &format!("essential package present: \"{included}\""),
-                    &message_config,
-                );
-            } else {
-                let mut is_package_present: bool = false;
-
-                for package in package_database.values() {
-                    if package[0].name == *included {
-                        initial_essential_subset.push(package[0].clone());
-
-                        print_message(
-                            "debug",
-                            &format!("essential package added:   \"{included}\""),
-                            &message_config,
-                        );
-
-                        is_package_present = true;
-
-                        break;
-                    };
-                }
-
-                if is_package_present == false {
-                    print_message(
-                        "error",
-                        &format!("failed to find package: \"{included}\""),
-                        &message_config,
-                    );
-
-                    return Err(());
-                };
-            };
-        }
-
-        initial_essential_subset.sort_unstable();
-    };
-
-    if packages_to_consider_non_essential.len() != 0 {
-        for excluded in packages_to_consider_non_essential {
-            if initial_essential_subset
-                .iter()
-                .any(|initial| &initial.name == excluded)
-                == true
-            {
-                for (index, initial) in initial_essential_subset.iter_mut().enumerate() {
-                    if initial.name == *excluded {
-                        initial_essential_subset.remove(index);
-
-                        print_message(
-                            "debug",
-                            &format!("essential package removed: \"{excluded}\""),
-                            &message_config,
-                        );
-
-                        break;
-                    };
-                }
-            } else {
-                print_message(
-                    "debug",
-                    &format!("essential package absent:  \"{excluded}\""),
-                    &message_config,
-                );
-            };
-        }
-
-        initial_essential_subset.sort_unstable();
-    };
-
-    //////////////////////////////////////////////
-
-    let target_essential_subset: Vec<Package>;
-    let mut target_required_subset: Vec<Package> = Vec::new();
-    let mut target_important_subset: Vec<Package> = Vec::new();
-    let mut target_standard_subset: Vec<Package> = Vec::new();
-
-    let quiet_message_config: MessageConfig = MessageConfig {
-        color: message_config.color,
-        debug: false,
-    };
-
-    print_message("debug", "calculating essential subset.", &message_config);
-
-    match resolve_dependencies(
-        &package_database,
-        &initial_essential_subset,
-        &false,
-        &packages_to_prohibit,
-        &quiet_message_config,
-    ) {
-        Ok(result) => target_essential_subset = result,
-        Err(..) => return Err(()),
-    };
-
-    if initial_required_subset.len() != 0 {
-        print_message("debug", "calculating required subset.", &message_config);
-
-        match resolve_dependencies(
-            &package_database,
-            &initial_required_subset,
-            &false,
-            &packages_to_prohibit,
-            &quiet_message_config,
-        ) {
-            Ok(result) => target_required_subset = result,
-            Err(..) => return Err(()),
-        };
-    };
-
-    if initial_important_subset.len() != 0 {
-        print_message("debug", "calculating important subset.", &message_config);
-
-        match resolve_dependencies(
-            &package_database,
-            &initial_important_subset,
-            &false,
-            &packages_to_prohibit,
-            &quiet_message_config,
-        ) {
-            Ok(result) => target_important_subset = result,
-            Err(..) => return Err(()),
-        };
-    };
-
-    if initial_standard_subset.len() != 0 {
-        print_message("debug", "calculating standard subset.", &message_config);
-
-        match resolve_dependencies(
-            &package_database,
-            &initial_standard_subset,
-            &false,
-            &packages_to_prohibit,
-            &quiet_message_config,
-        ) {
-            Ok(result) => target_standard_subset = result,
-            Err(..) => return Err(()),
-        };
-    };
-
-    let target_required_subset: Vec<Package> = target_required_subset;
-    let target_important_subset: Vec<Package> = target_important_subset;
-    let target_standard_subset: Vec<Package> = target_standard_subset;
-
-    //////////////////////////////////////////////
-
-    let output_sub_directories: Vec<String> = Vec::from([
-        String::from("essential"),
-        String::from("required"),
-        String::from("important"),
-        String::from("standard"),
-        String::from("remaining"),
-    ]);
-
-    println!("Separating packages by priority ...");
-
-    for sub_directory in &output_sub_directories {
-        let mut downloaded_package_file_names: Vec<String> = std::fs::read_dir(&input_directory)
-            .unwrap()
-            .map(|element| {
-                String::from(
-                    element
-                        .unwrap()
-                        .path()
-                        .file_name()
-                        .unwrap()
-                        .to_string_lossy(),
-                )
-            })
-            .collect::<Vec<String>>();
-
-        downloaded_package_file_names.sort_unstable();
-
-        for package in &downloaded_package_file_names {
-            let mut package_name: String = String::new();
-
-            match extract_deb_control_field(
-                &target_extractor,
-                &format!("{input_directory}/{package}"),
-                &message_config,
-            ) {
-                Ok(result) => {
-                    for line in result.lines() {
-                        if line.starts_with("Package: ") == true {
-                            package_name = line.replacen("Package: ", "", 1);
-                            break;
-                        };
-                    }
-                }
-                Err(..) => {
-                    return Err(());
-                }
-            };
-
-            let mut is_package_in_subset: bool = false;
-
-            match sub_directory as &str {
-                "essential" => {
-                    if target_essential_subset
-                        .iter()
-                        .any(|essential| essential.name == package_name)
-                        == true
-                    {
-                        is_package_in_subset = true;
-                    };
-                }
-                "required" => {
-                    if target_required_subset
-                        .iter()
-                        .any(|required| required.name == package_name)
-                        == true
-                    {
-                        is_package_in_subset = true;
-                    };
-                }
-                "important" => {
-                    if target_important_subset
-                        .iter()
-                        .any(|important| important.name == package_name)
-                        == true
-                    {
-                        is_package_in_subset = true;
-                    };
-                }
-                "standard" => {
-                    if target_standard_subset
-                        .iter()
-                        .any(|standard| standard.name == package_name)
-                        == true
-                    {
-                        is_package_in_subset = true;
-                    };
-                }
-                _ => {}
-            };
-
-            if is_package_in_subset == true {
-                if Path::new(&format!("{output_directory}/{sub_directory}")).exists() == false {
-                    if create_directory(
-                        &format!("{output_directory}/{sub_directory}"),
-                        &message_config,
-                    )
-                    .is_err()
-                        == true
-                    {
-                        return Err(());
-                    };
-                };
-
-                print_message(
-                    "debug",
-                    &format!("moving {sub_directory} package: \"{package}\" to \"{output_directory}/{sub_directory}\""),
-                    &message_config,
-                );
-
-                if std::fs::rename(
-                    format!("{input_directory}/{package}"),
-                    format!("{output_directory}/{sub_directory}/{package}"),
-                )
-                .is_err()
-                    == true
-                {
-                    print_message(
-                        "error",
-                        &format!("failed to move file: \"{input_directory}/{package}\""),
-                        &message_config,
-                    );
-
-                    return Err(());
-                };
-            };
-        }
-    }
-
-    let mut remaining_package_file_names: Vec<String> = std::fs::read_dir(&input_directory)
-        .unwrap()
-        .map(|element| {
-            String::from(
-                element
-                    .unwrap()
-                    .path()
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy(),
-            )
-        })
-        .collect::<Vec<String>>();
-
-    remaining_package_file_names.sort_unstable();
-
-    if remaining_package_file_names.len() != 0 {
-        if create_directory(
-            &format!("{output_directory}/{}", &output_sub_directories[4]),
-            &message_config,
-        )
-        .is_err()
-            == true
-        {
-            return Err(());
-        };
-
-        for package in &remaining_package_file_names {
-            print_message(
-                "debug",
-                &format!(
-                    "moving remaining package: \"{package}\" to \"{}\"",
-                    format!("{output_directory}/{}", &output_sub_directories[4])
-                ),
-                &message_config,
-            );
-
-            if std::fs::rename(
-                format!("{input_directory}/{package}"),
-                format!(
-                    "{}/{package}",
-                    format!("{output_directory}/{}", &output_sub_directories[4])
-                ),
-            )
-            .is_err()
-                == true
-            {
-                print_message(
-                    "error",
-                    &format!("failed to move file: \"{input_directory}/{package}\""),
-                    &message_config,
-                );
-
-                return Err(());
-            };
-        }
-    };
 
     return Ok(());
 }

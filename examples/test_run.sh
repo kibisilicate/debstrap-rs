@@ -1,10 +1,5 @@
 #! /usr/bin/env bash
 
-if [ "$USER" != 'root' ]; then
-  echo 'error: must be ran as root.'
-  exit 1
-fi
-
 make || exit 1
 
 declare format='directory'
@@ -113,7 +108,7 @@ declare -a mirrors=(
 declare resolver='internal'
 #declare resolver='none'
 
-./target/release/debstrap \
+sudo ./target/release/debstrap \
   --format="$format" \
   --releases="$(echo "${suites[@]}")" \
   --components="$(echo "${components[@]}")" \

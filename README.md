@@ -31,7 +31,8 @@ The following packages are needed for running **debstrap**:
 
 The following packages provide extra functionality to **debstrap**:
 
-* qemu-user-static
+* qemu-user
+* qemu-user-binfmt
 * binfmt-support
 * bzip2
 * zstd
@@ -59,7 +60,7 @@ sudo make install
 Build and install .deb package:
 
 ```
-sudo debuild --unsigned-source --unsigned-changes
+debuild --unsigned-source --unsigned-changes
 sudo dpkg --install ../debstrap_*.deb
 ```
 

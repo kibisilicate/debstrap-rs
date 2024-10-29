@@ -24,8 +24,9 @@ const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const UBUNTU_CURRENT_SUITES: [&str; 10] = [
+const UBUNTU_CURRENT_SUITES: [&str; 11] = [
     "devel",    // alias for latest version
+    "plucky",   // Ubuntu 25.04
     "oracular", // Ubuntu 24.10
     "noble",    // Ubuntu 24.04 LTS
     "mantic",   // Ubuntu 23.10

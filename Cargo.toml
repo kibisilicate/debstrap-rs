@@ -11,8 +11,10 @@ description = "Bootstrap overly complicated Debian systems"
 [dependencies]
 byte-unit = "5.1.4"
 cmd_lib = "1.9.4"
+md-5 = "0.10.6"
 rand = "0.8.5"
 reqwest = { version = "0.12.5", features = ["blocking", "stream"] }
+sha2 = "0.10.8"
 termion = "4.0.2"
 tokio = { version = "1.38.0", features = ["full"] }
 which = "6.0.1"

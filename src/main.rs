@@ -4,6 +4,8 @@ use defaults::*;
 pub mod defaults;
 use functions::*;
 pub mod functions;
+use indices::*;
+pub mod indices;
 use package::*;
 pub mod package;
 use sources::*;
@@ -1603,11 +1605,11 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    println!("Fetching package list(s):");
+    println!("Fetching indices:");
 
-    let package_lists_directory: String = format!("{workspace_directory}/lists");
+    let indices_directory: String = format!("{workspace_directory}/indices");
 
-    if create_directory(&package_lists_directory, &message_config).is_err() == true {
+    if create_directory(&indices_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             None,
@@ -1619,9 +1621,7 @@ See debstrap(8) for more information."
         return ExitCode::from(1);
     };
 
-    if download_package_lists(&sources_list, &package_lists_directory, &message_config).is_err()
-        == true
-    {
+    if download_indices(&sources_list, &indices_directory, &message_config).is_err() == true {
         clean_up_on_exit(
             &workspace_directory,
             None,
@@ -1635,7 +1635,7 @@ See debstrap(8) for more information."
 
     //////////////////////////////////////////////
 
-    print_message("debug", "creating package database", &message_config);
+    println!("Creating package database ...");
 
     let mut package_database: HashMap<String, Vec<Package>> = HashMap::new();
 
@@ -1650,7 +1650,7 @@ See debstrap(8) for more information."
                         .replace("/", "_");
 
                         match std::fs::read_to_string(format!(
-                            "{package_lists_directory}/{package_list_file_name}"
+                            "{indices_directory}/{package_list_file_name}"
                         )) {
                             Ok(result) => {
                                 for entry in result
@@ -1981,7 +1981,7 @@ See debstrap(8) for more information."
 
     match &target_resolver as &str {
         "internal" => {
-            print_message("debug", "calculating dependencies", &message_config);
+            println!("Calculating dependencies ...");
 
             match resolve_dependencies(
                 &package_database,

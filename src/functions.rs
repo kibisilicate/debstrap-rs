@@ -1,13 +1,9 @@
-use crate::package::*;
-use crate::sources::*;
-
-use byte_unit::{Byte, Unit, UnitType};
 use cmd_lib::{run_cmd, run_fun};
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Write};
 use std::os::unix::fs;
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::Path;
 
 pub struct MessageConfig {
@@ -498,7 +494,11 @@ pub fn download_file(
         return Ok(());
     }
 
-    print_message("debug", &format!("downloading: \"{uri}\""), &message_config);
+    print_message(
+        "debug",
+        &format!("downloading file: \"{uri}\""),
+        &message_config,
+    );
 
     match tokio::runtime::Runtime::new()
         .unwrap()
@@ -511,445 +511,92 @@ pub fn download_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub fn download_package_lists(
-    sources_list: &Vec<SourcesEntry>,
-    output_directory: &str,
+pub fn verify_file_checksum(
+    hash_type: &str,
+    file_location: &str,
+    expected_checksum: &str,
+    expected_file_size: &u64,
     message_config: &MessageConfig,
 ) -> Result<(), ()> {
-    let mut total_amount_to_download: u64 = 0;
+    print_message(
+        "debug",
+        &format!("verifying {hash_type} checksum of file: \"{file_location}\""),
+        &message_config,
+    );
 
-    for entry in sources_list {
-        for _uri in &entry.uris {
-            for _suite in &entry.suites {
-                for _component in &entry.components {
-                    for _architecture in &entry.architectures {
-                        total_amount_to_download += 1;
-                    }
-                }
-            }
-        }
-    }
+    let parsed_file: Vec<u8>;
 
-    let counter_spacing: u16;
-
-    match total_amount_to_download {
-        length if length < 10 => {
-            counter_spacing = 6;
-        }
-        length if length < 100 => {
-            counter_spacing = 8;
-        }
-        length if length < 1000 => {
-            counter_spacing = 10;
-        }
-        length if length < 10000 => {
-            counter_spacing = 12;
-        }
-        length if length < 100000 => {
-            counter_spacing = 14;
-        }
-        _ => {
-            print_message("error", "invalid size.", &message_config);
-
+    match std::fs::read(file_location) {
+        Ok(result) => parsed_file = result,
+        Err(..) => {
+            print_message(
+                "error",
+                &format!("failed to read file: \"{file_location}\""),
+                &message_config,
+            );
             return Err(());
         }
     };
 
-    let mut counter: u64 = 0;
+    let actual_checksum: String;
 
-    for entry in sources_list {
-        for (scheme, path) in &entry.uris {
-            for suite in &entry.suites {
-                for component in &entry.components {
-                    for architecture in &entry.architectures {
-                        counter += 1;
-
-                        println!(
-                            "{} {}",
-                            space_and_truncate_string(
-                                &format!("({counter}/{total_amount_to_download}):"),
-                                counter_spacing,
-                            ),
-                            format!("{scheme}{path} {suite}/{component} {architecture} Packages"),
-                        );
-
-                        let package_list_parent_path: String = format!(
-                            "{scheme}{path}/dists/{suite}/{component}/binary-{architecture}"
-                        );
-
-                        let potential_file_names: Vec<String> = Vec::from([
-                            String::from("Packages.xz"),
-                            String::from("Packages.gz"),
-                            String::from("Packages.bz2"),
-                            String::from("Packages"),
-                        ]);
-
-                        let mut did_package_list_download: bool = false;
-
-                        for file_name in potential_file_names {
-                            let package_list_uri: String =
-                                format!("{package_list_parent_path}/{file_name}");
-
-                            if does_network_resource_exist(&package_list_uri) == true {
-                                match download_file(
-                                    &package_list_uri,
-                                    &output_directory,
-                                    &message_config,
-                                ) {
-                                    Ok(..) => {
-                                        did_package_list_download = true;
-
-                                        if decompress_file(
-                                            &format!("{output_directory}/{file_name}"),
-                                            &message_config,
-                                        )
-                                        .is_err()
-                                            == true
-                                        {
-                                            return Err(());
-                                        };
-
-                                        let package_list_file_name: String = format!("{path}/dists/{suite}/{component}/binary-{architecture}_Packages").replace("/", "_");
-
-                                        if std::fs::rename(
-                                            format!("{output_directory}/Packages"),
-                                            format!("{output_directory}/{package_list_file_name}"),
-                                        )
-                                        .is_err()
-                                            == true
-                                        {
-                                            print_message(
-                                                "error",
-                                                &format!("failed to rename file: \"Packages\""),
-                                                &message_config,
-                                            );
-                                            return Err(());
-                                        };
-
-                                        break;
-                                    }
-                                    Err(..) => return Err(()),
-                                };
-                            };
-                        }
-
-                        if did_package_list_download == false {
-                            print_message("error", "failed to find package list.", &message_config);
-                            return Err(());
-                        };
-                    }
-                }
-            }
+    match hash_type {
+        "sha256" => {
+            use sha2::{Digest, Sha256};
+            actual_checksum = format!("{:x}", Sha256::digest(parsed_file));
         }
-    }
-
-    return Ok(());
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub fn download_packages(
-    target_package_set: &Vec<Package>,
-    output_directory: &str,
-    message_config: &MessageConfig,
-) -> Result<(), ()> {
-    let counter_spacing: u16;
-
-    match target_package_set.len() {
-        length if length < 10 => {
-            counter_spacing = 6;
-        }
-        length if length < 100 => {
-            counter_spacing = 8;
-        }
-        length if length < 1000 => {
-            counter_spacing = 10;
-        }
-        length if length < 10000 => {
-            counter_spacing = 12;
-        }
-        length if length < 100000 => {
-            counter_spacing = 14;
+        "md5" => {
+            use md5::{Digest, Md5};
+            actual_checksum = format!("{:x}", Md5::digest(parsed_file));
         }
         _ => {
-            print_message("error", "invalid size.", &message_config);
-
+            print_message("error", "invalid hash type.", &message_config);
             return Err(());
         }
     };
 
-    let mut full_uri_length: u16 = 0;
-    let mut suite_and_component_length: u16 = 0;
-    let mut name_length: u16 = 0;
-    let mut version_length: u16 = 0;
-    let mut architecture_length: u16 = 0;
-
-    for package in target_package_set {
-        if (package.origin_uri_scheme.len() as u16 + package.origin_uri_path.len() as u16)
-            > full_uri_length
-        {
-            full_uri_length =
-                package.origin_uri_scheme.len() as u16 + package.origin_uri_path.len() as u16;
-        };
-
-        if (package.origin_suite.len() as u16 + 1 + package.origin_component.len() as u16)
-            > suite_and_component_length
-        {
-            suite_and_component_length =
-                package.origin_suite.len() as u16 + 1 + package.origin_component.len() as u16;
-        };
-
-        if package.name.len() as u16 > name_length {
-            name_length = package.name.len() as u16;
-        };
-
-        if package.version.len() as u16 > version_length {
-            version_length = package.version.len() as u16;
-        };
-
-        if package.architecture.len() as u16 > architecture_length {
-            architecture_length = package.architecture.len() as u16;
-        };
-    }
-
-    let mut counter: u64 = 0;
-
-    for package in target_package_set {
-        counter += 1;
-
-        println!(
-            "{} {} {} {} {} {} {}",
-            space_and_truncate_string(
-                &format!("({counter}/{}):", target_package_set.len()),
-                counter_spacing
-            ),
-            space_and_truncate_string(
-                &format!("{}{}", package.origin_uri_scheme, package.origin_uri_path),
-                full_uri_length
-            ),
-            space_and_truncate_string(
-                &format!("{}/{}", package.origin_suite, package.origin_component),
-                suite_and_component_length
-            ),
-            space_and_truncate_string(&package.name, name_length),
-            space_and_truncate_string(&package.version, version_length),
-            space_and_truncate_string(&package.architecture, architecture_length),
-            format!(
-                "{:.2}",
-                &Byte::from_f64_with_unit(package.file_size as f64, Unit::B)
-                    .unwrap()
-                    .get_appropriate_unit(UnitType::Binary),
-            ),
-        );
-
-        if download_file(
+    if actual_checksum != expected_checksum {
+        print_message(
+            "error",
             &format!(
-                "{}{}/{}",
-                package.origin_uri_scheme, package.origin_uri_path, package.file_name
+                "\
+unexpected checksum of file: \"{file_location}\"
+Expected: \"{expected_checksum}\"
+Got:      \"{actual_checksum}\""
             ),
-            &output_directory,
             &message_config,
-        )
-        .is_err()
-            == true
-        {
-            return Err(());
-        };
-    }
-
-    return Ok(());
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub fn extract_deb_control_field(
-    extractor: &str,
-    package: &str,
-    message_config: &MessageConfig,
-) -> Result<String, ()> {
-    let mut control_field: String = String::new();
-
-    match extractor as &str {
-        "ar" => {
-            let tarball: String;
-
-            match run_fun!(ar -t "$package" | grep --regexp="^control.tar") {
-                Ok(result) => {
-                    tarball = result;
-                }
-                Err(..) => {
-                    print_message(
-                        "error",
-                        &format!("failed to read file: \"{package}\""),
-                        &message_config,
-                    );
-                    return Err(());
-                }
-            };
-
-            match &tarball as &str {
-                "control.tar" => {
-                    control_field = String::from(
-                        run_fun!(ar -p "$package" "$tarball" | tar --extract --to-stdout ./control)
-                            .unwrap(),
-                    );
-                }
-                "control.tar.bz2" => {
-                    control_field = String::from(
-                        run_fun!(ar -p "$package" "$tarball" | bzip2 --decompress --stdout --force | tar --extract --to-stdout ./control).unwrap(),
-                    );
-                }
-                "control.tar.gz" => {
-                    control_field = String::from(
-                        run_fun!(ar -p "$package" "$tarball" | gzip --decompress --to-stdout --force | tar --extract --to-stdout ./control).unwrap(),
-                    );
-                }
-                "control.tar.xz" => {
-                    control_field = String::from(
-                        run_fun!(ar -p "$package" "$tarball" | xz --decompress --to-stdout --force | tar --extract --to-stdout ./control).unwrap(),
-                    );
-                }
-                "control.tar.zst" => {
-                    control_field =
-                        String::from(run_fun!(ar -p "$package" "$tarball" | zstd --decompress --stdout --force | tar --extract --to-stdout ./control).unwrap());
-                }
-                _ => {}
-            };
-        }
-        "dpkg-deb" => {
-            control_field = String::from(run_fun!(dpkg-deb --field "$package").unwrap());
-        }
-        _ => {}
+        );
+        return Err(());
     };
 
-    return Ok(control_field);
-}
+    //////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+    let actual_file_size: u64;
 
-pub fn extract_deb_data(
-    extractor: &str,
-    package: &str,
-    output_directory: &str,
-    message_config: &MessageConfig,
-) -> Result<(), ()> {
-    match extractor as &str {
-        "ar" => {
-            let tarball: String;
-
-            match run_fun!(ar -t "$package" | grep --regexp="^data.tar") {
-                Ok(result) => {
-                    tarball = result;
-                }
-                Err(..) => {
-                    print_message(
-                        "error",
-                        &format!("failed to read file: \"{package}\""),
-                        &message_config,
-                    );
-                    return Err(());
-                }
-            };
-
-            match &tarball as &str {
-                "data.tar" => {
-                    if run_cmd!(
-                        ar -p "$package" "$tarball" |
-                            tar --extract --keep-directory-symlink --directory="$output_directory"
-                    )
-                    .is_err()
-                        == true
-                    {
-                        print_message(
-                            "error",
-                            &format!("failed to extract package: \"{package}\""),
-                            &message_config,
-                        );
-                        return Err(());
-                    };
-                }
-                "data.tar.bz2" => {
-                    if run_cmd!(
-                        ar -p "$package" "$tarball" |
-                            bzip2 --decompress --stdout --force |
-                            tar --extract --keep-directory-symlink --directory="$output_directory"
-                    )
-                    .is_err()
-                        == true
-                    {
-                        print_message(
-                            "error",
-                            &format!("failed to extract package: \"{package}\""),
-                            &message_config,
-                        );
-                        return Err(());
-                    };
-                }
-                "data.tar.gz" => {
-                    if run_cmd!(
-                        ar -p "$package" "$tarball" |
-                            gzip --decompress --to-stdout --force |
-                            tar --extract --keep-directory-symlink --directory="$output_directory"
-                    )
-                    .is_err()
-                        == true
-                    {
-                        print_message(
-                            "error",
-                            &format!("failed to extract package: \"{package}\""),
-                            &message_config,
-                        );
-                        return Err(());
-                    };
-                }
-                "data.tar.xz" => {
-                    if run_cmd!(
-                        ar -p "$package" "$tarball" |
-                            xz --decompress --to-stdout --force |
-                            tar --extract --keep-directory-symlink --directory="$output_directory"
-                    )
-                    .is_err()
-                        == true
-                    {
-                        print_message(
-                            "error",
-                            &format!("failed to extract package: \"{package}\""),
-                            &message_config,
-                        );
-                        return Err(());
-                    };
-                }
-                "data.tar.zst" => {
-                    if run_cmd!(
-                        ar -p "$package" "$tarball" |
-                            zstd --decompress --stdout --force |
-                            tar --extract --keep-directory-symlink --directory="$output_directory"
-                    )
-                    .is_err()
-                        == true
-                    {
-                        print_message(
-                            "error",
-                            &format!("failed to extract package: \"{package}\""),
-                            &message_config,
-                        );
-                        return Err(());
-                    };
-                }
-                _ => {}
-            };
+    match std::fs::metadata(file_location) {
+        Ok(result) => actual_file_size = result.size(),
+        Err(..) => {
+            print_message(
+                "error",
+                &format!("failed to read metadata of file: \"{file_location}\""),
+                &message_config,
+            );
+            return Err(());
         }
-        "dpkg-deb" => {
-            if run_cmd!(dpkg-deb --fsys-tarfile "$package").is_err() == true {
-                print_message(
-                    "error",
-                    &format!("failed to extract package: \"{package}\""),
-                    &message_config,
-                );
-                return Err(());
-            };
-        }
-        _ => {}
+    };
+
+    if actual_file_size != *expected_file_size {
+        print_message(
+            "error",
+            &format!(
+                "\
+unexpected size of file: \"{file_location}\"
+Expected: \"{expected_file_size}\" Bytes
+Got:      \"{actual_file_size}\" Bytes"
+            ),
+            &message_config,
+        );
+        return Err(());
     };
 
     return Ok(());

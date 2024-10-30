@@ -1,6 +1,8 @@
 use crate::functions::*;
 
 use byte_unit::{Byte, Unit, UnitType};
+use cmd_lib::{run_cmd, run_fun};
+use std::path::Path;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Relationship {
@@ -30,6 +32,8 @@ pub struct Package {
     pub file_name: String,
     pub file_size: u64,
     pub installed_size: u64,
+    pub sha256_hash: String,
+    pub md5_hash: String,
     pub maintainer: String,
     pub description: String,
     pub homepage: String,
@@ -118,6 +122,8 @@ impl Package {
         let mut file_name: String = String::new();
         let mut file_size: u64 = 0;
         let mut installed_size: u64 = 0;
+        let mut sha256_hash: String = String::new();
+        let mut md5_hash: String = String::new();
         let mut maintainer: String = String::new();
         let mut description: String = String::new();
         let mut homepage: String = String::new();
@@ -181,6 +187,12 @@ impl Package {
                 _ if line.starts_with("Installed-Size: ") => {
                     installed_size = line.replacen("Installed-Size: ", "", 1).parse().unwrap();
                 }
+                _ if line.starts_with("SHA256: ") => {
+                    sha256_hash = line.replacen("SHA256: ", "", 1);
+                }
+                _ if line.starts_with("MD5sum: ") => {
+                    md5_hash = line.replacen("MD5sum: ", "", 1);
+                }
                 _ if line.starts_with("Maintainer: ") => {
                     maintainer = line.replacen("Maintainer: ", "", 1);
                 }
@@ -214,6 +226,8 @@ impl Package {
             file_name: file_name,
             file_size: file_size,
             installed_size: installed_size,
+            sha256_hash: sha256_hash,
+            md5_hash: md5_hash,
             maintainer: maintainer,
             description: description,
             homepage: homepage,
@@ -317,6 +331,8 @@ pub fn pretty_print_package(package: &Package, message_config: &MessageConfig) {
         ),
         &message_config,
     );
+    pretty_print_string("SHA256 Hash", &package.sha256_hash, &message_config);
+    pretty_print_string("MD5 Hash", &package.md5_hash, &message_config);
     pretty_print_string("Maintainer", &package.maintainer, &message_config);
     pretty_print_string("Description", &package.description, &message_config);
     pretty_print_string("Homepage", &package.homepage, &message_config);
@@ -628,6 +644,362 @@ pub fn print_packages_dynamically(
                 .get_appropriate_unit(UnitType::Binary),
         ),
     );
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn download_packages(
+    target_package_set: &Vec<Package>,
+    output_directory: &str,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    let counter_spacing: u16;
+
+    match target_package_set.len() {
+        length if length < 10 => {
+            counter_spacing = 6;
+        }
+        length if length < 100 => {
+            counter_spacing = 8;
+        }
+        length if length < 1000 => {
+            counter_spacing = 10;
+        }
+        length if length < 10000 => {
+            counter_spacing = 12;
+        }
+        length if length < 100000 => {
+            counter_spacing = 14;
+        }
+        _ => {
+            print_message("error", "invalid size.", &message_config);
+
+            return Err(());
+        }
+    };
+
+    let mut full_uri_length: u16 = 0;
+    let mut suite_and_component_length: u16 = 0;
+    let mut name_length: u16 = 0;
+    let mut version_length: u16 = 0;
+    let mut architecture_length: u16 = 0;
+
+    for package in target_package_set {
+        if (package.origin_uri_scheme.len() as u16 + package.origin_uri_path.len() as u16)
+            > full_uri_length
+        {
+            full_uri_length =
+                package.origin_uri_scheme.len() as u16 + package.origin_uri_path.len() as u16;
+        };
+
+        if (package.origin_suite.len() as u16 + 1 + package.origin_component.len() as u16)
+            > suite_and_component_length
+        {
+            suite_and_component_length =
+                package.origin_suite.len() as u16 + 1 + package.origin_component.len() as u16;
+        };
+
+        if package.name.len() as u16 > name_length {
+            name_length = package.name.len() as u16;
+        };
+
+        if package.version.len() as u16 > version_length {
+            version_length = package.version.len() as u16;
+        };
+
+        if package.architecture.len() as u16 > architecture_length {
+            architecture_length = package.architecture.len() as u16;
+        };
+    }
+
+    let mut counter: u64 = 0;
+
+    for package in target_package_set {
+        counter += 1;
+
+        println!(
+            "{} {} {} {} {} {} {}",
+            space_and_truncate_string(
+                &format!("({counter}/{}):", target_package_set.len()),
+                counter_spacing
+            ),
+            space_and_truncate_string(
+                &format!("{}{}", package.origin_uri_scheme, package.origin_uri_path),
+                full_uri_length
+            ),
+            space_and_truncate_string(
+                &format!("{}/{}", package.origin_suite, package.origin_component),
+                suite_and_component_length
+            ),
+            space_and_truncate_string(&package.name, name_length),
+            space_and_truncate_string(&package.version, version_length),
+            space_and_truncate_string(&package.architecture, architecture_length),
+            format!(
+                "{:.2}",
+                &Byte::from_f64_with_unit(package.file_size as f64, Unit::B)
+                    .unwrap()
+                    .get_appropriate_unit(UnitType::Binary),
+            ),
+        );
+
+        match download_file(
+            &format!(
+                "{}{}/{}",
+                package.origin_uri_scheme, package.origin_uri_path, package.file_name,
+            ),
+            &output_directory,
+            &message_config,
+        ) {
+            Ok(..) => {
+                let downloaded_file_location: String = format!(
+                    "{output_directory}/{}",
+                    Path::new(&package.file_name)
+                        .file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                );
+
+                if package.sha256_hash.is_empty() == false {
+                    if verify_file_checksum(
+                        "sha256",
+                        &downloaded_file_location,
+                        &package.sha256_hash,
+                        &package.file_size,
+                        &message_config,
+                    )
+                    .is_err()
+                        == true
+                    {
+                        return Err(());
+                    };
+                } else if package.md5_hash.is_empty() == false {
+                    print_message(
+                        "warning",
+                        "falling back to using md5 checksum.",
+                        &message_config,
+                    );
+
+                    if verify_file_checksum(
+                        "md5",
+                        &downloaded_file_location,
+                        &package.md5_hash,
+                        &package.file_size,
+                        &message_config,
+                    )
+                    .is_err()
+                        == true
+                    {
+                        return Err(());
+                    };
+                } else {
+                    print_message(
+                        "error",
+                        &format!("failed to find any checksums for package: \"{downloaded_file_location}\""),
+                        &message_config,
+                    );
+                    return Err(());
+                };
+            }
+            Err(..) => return Err(()),
+        };
+    }
+
+    return Ok(());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn extract_deb_control_field(
+    extractor: &str,
+    package: &str,
+    message_config: &MessageConfig,
+) -> Result<String, ()> {
+    let mut control_field: String = String::new();
+
+    match extractor as &str {
+        "ar" => {
+            let tarball: String;
+
+            match run_fun!(ar -t "$package" | grep --regexp="^control.tar") {
+                Ok(result) => {
+                    tarball = result;
+                }
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("failed to read file: \"{package}\""),
+                        &message_config,
+                    );
+                    return Err(());
+                }
+            };
+
+            match &tarball as &str {
+                "control.tar" => {
+                    control_field = String::from(
+                        run_fun!(ar -p "$package" "$tarball" | tar --extract --to-stdout ./control)
+                            .unwrap(),
+                    );
+                }
+                "control.tar.bz2" => {
+                    control_field = String::from(
+                        run_fun!(ar -p "$package" "$tarball" | bzip2 --decompress --stdout --force | tar --extract --to-stdout ./control).unwrap(),
+                    );
+                }
+                "control.tar.gz" => {
+                    control_field = String::from(
+                        run_fun!(ar -p "$package" "$tarball" | gzip --decompress --to-stdout --force | tar --extract --to-stdout ./control).unwrap(),
+                    );
+                }
+                "control.tar.xz" => {
+                    control_field = String::from(
+                        run_fun!(ar -p "$package" "$tarball" | xz --decompress --to-stdout --force | tar --extract --to-stdout ./control).unwrap(),
+                    );
+                }
+                "control.tar.zst" => {
+                    control_field =
+                        String::from(run_fun!(ar -p "$package" "$tarball" | zstd --decompress --stdout --force | tar --extract --to-stdout ./control).unwrap());
+                }
+                _ => {}
+            };
+        }
+        "dpkg-deb" => {
+            control_field = String::from(run_fun!(dpkg-deb --field "$package").unwrap());
+        }
+        _ => {}
+    };
+
+    return Ok(control_field);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub fn extract_deb_data(
+    extractor: &str,
+    package: &str,
+    output_directory: &str,
+    message_config: &MessageConfig,
+) -> Result<(), ()> {
+    match extractor as &str {
+        "ar" => {
+            let tarball: String;
+
+            match run_fun!(ar -t "$package" | grep --regexp="^data.tar") {
+                Ok(result) => {
+                    tarball = result;
+                }
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("failed to read file: \"{package}\""),
+                        &message_config,
+                    );
+                    return Err(());
+                }
+            };
+
+            match &tarball as &str {
+                "data.tar" => {
+                    if run_cmd!(
+                        ar -p "$package" "$tarball" |
+                            tar --extract --keep-directory-symlink --directory="$output_directory"
+                    )
+                    .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!("failed to extract package: \"{package}\""),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                }
+                "data.tar.bz2" => {
+                    if run_cmd!(
+                        ar -p "$package" "$tarball" |
+                            bzip2 --decompress --stdout --force |
+                            tar --extract --keep-directory-symlink --directory="$output_directory"
+                    )
+                    .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!("failed to extract package: \"{package}\""),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                }
+                "data.tar.gz" => {
+                    if run_cmd!(
+                        ar -p "$package" "$tarball" |
+                            gzip --decompress --to-stdout --force |
+                            tar --extract --keep-directory-symlink --directory="$output_directory"
+                    )
+                    .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!("failed to extract package: \"{package}\""),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                }
+                "data.tar.xz" => {
+                    if run_cmd!(
+                        ar -p "$package" "$tarball" |
+                            xz --decompress --to-stdout --force |
+                            tar --extract --keep-directory-symlink --directory="$output_directory"
+                    )
+                    .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!("failed to extract package: \"{package}\""),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                }
+                "data.tar.zst" => {
+                    if run_cmd!(
+                        ar -p "$package" "$tarball" |
+                            zstd --decompress --stdout --force |
+                            tar --extract --keep-directory-symlink --directory="$output_directory"
+                    )
+                    .is_err()
+                        == true
+                    {
+                        print_message(
+                            "error",
+                            &format!("failed to extract package: \"{package}\""),
+                            &message_config,
+                        );
+                        return Err(());
+                    };
+                }
+                _ => {}
+            };
+        }
+        "dpkg-deb" => {
+            if run_cmd!(dpkg-deb --fsys-tarfile "$package").is_err() == true {
+                print_message(
+                    "error",
+                    &format!("failed to extract package: \"{package}\""),
+                    &message_config,
+                );
+                return Err(());
+            };
+        }
+        _ => {}
+    };
 
     return Ok(());
 }

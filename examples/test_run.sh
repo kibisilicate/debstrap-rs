@@ -5,6 +5,17 @@ make || exit 1
 declare format='directory'
 #declare format='tarball'
 
+declare -a mirrors=(
+  # Debian mirrors:
+  'https://deb.debian.org/debian'
+  #'https://deb.debian.org/debian-ports'
+  #'http://archive.debian.org/debian'
+  # Ubuntu mirrors:
+  #'http://archive.ubuntu.com/ubuntu'
+  #'http://ports.ubuntu.com/ubuntu-ports'
+  #'https://old-releases.ubuntu.com/ubuntu'
+)
+
 declare -a suites=(
   # Debian releases:
   'unstable'        # alias for "sid"
@@ -95,27 +106,16 @@ declare variant='required'
 #declare variant='standard'
 #declare variant='custom'
 
-declare -a mirrors=(
-  # Debian mirrors:
-  #'https://deb.debian.org/debian'
-  #'https://deb.debian.org/debian-ports'
-  #'http://archive.debian.org/debian'
-  # Ubuntu mirrors:
-  #'http://archive.ubuntu.com/ubuntu'
-  #'http://ports.ubuntu.com/ubuntu-ports'
-  #'https://old-releases.ubuntu.com/ubuntu'
-)
-
 declare resolver='internal'
 #declare resolver='none'
 
 sudo ./target/release/debstrap \
   --format="$format" \
+  --mirrors="$(echo "${mirrors[@]}")" \
   --releases="$(echo "${suites[@]}")" \
   --components="$(echo "${components[@]}")" \
   --architectures="$(echo "${architectures[@]}")" \
   --variant="$variant" \
-  --mirrors="$(echo "${mirrors[@]}")" \
   --resolver="$resolver" \
   --discard-output \
   $(echo "$@")

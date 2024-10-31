@@ -208,6 +208,39 @@ pub fn parse_sources_file(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn parse_uri(uri_to_parse: &str) -> Result<(String, String), ()> {
+    let uri_scheme: String;
+    let mut uri_path: String;
+
+    match uri_to_parse {
+        uri if uri.starts_with("http://") => {
+            uri_scheme = String::from("http://");
+            uri_path = uri_to_parse.replacen("http://", "", 1);
+        }
+        uri if uri.starts_with("https://") => {
+            uri_scheme = String::from("https://");
+            uri_path = uri_to_parse.replacen("https://", "", 1);
+        }
+        _ => return Err(()),
+    };
+
+    while uri_path.contains("//") == true {
+        uri_path = uri_path.replace("//", "/");
+    }
+
+    if uri_path.starts_with("/") == true {
+        uri_path = String::from(uri_path.strip_prefix("/").unwrap());
+    };
+
+    if uri_path.ends_with("/") == true {
+        uri_path = String::from(uri_path.strip_suffix("/").unwrap());
+    };
+
+    return Ok((uri_scheme, uri_path));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub fn create_sources_list(
     input_uris: &Vec<String>,
     input_suites: &Vec<String>,
@@ -344,39 +377,6 @@ pub fn create_sources_list(
     }];
 
     return Ok(sources_list);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub fn parse_uri(uri_to_parse: &str) -> Result<(String, String), ()> {
-    let uri_scheme: String;
-    let mut uri_path: String;
-
-    match uri_to_parse {
-        uri if uri.starts_with("http://") => {
-            uri_scheme = String::from("http://");
-            uri_path = uri_to_parse.replacen("http://", "", 1);
-        }
-        uri if uri.starts_with("https://") => {
-            uri_scheme = String::from("https://");
-            uri_path = uri_to_parse.replacen("https://", "", 1);
-        }
-        _ => return Err(()),
-    };
-
-    while uri_path.contains("//") == true {
-        uri_path = uri_path.replace("//", "/");
-    }
-
-    if uri_path.starts_with("/") == true {
-        uri_path = String::from(uri_path.strip_prefix("/").unwrap());
-    };
-
-    if uri_path.ends_with("/") == true {
-        uri_path = String::from(uri_path.strip_suffix("/").unwrap());
-    };
-
-    return Ok((uri_scheme, uri_path));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

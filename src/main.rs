@@ -309,6 +309,10 @@ See debstrap(8) for more information."
             _ if argument.starts_with("-s=") => {
                 chosen_sources_location = String::from(argument.replacen("-s=", "", 1).trim());
             }
+            _ if argument.starts_with("--source=") => {
+                chosen_sources_location =
+                    String::from(argument.replacen("--source=", "", 1).trim());
+            }
             _ if argument.starts_with("--sources=") => {
                 chosen_sources_location =
                     String::from(argument.replacen("--sources=", "", 1).trim());
@@ -850,12 +854,19 @@ See debstrap(8) for more information."
                 chosen_sources_location = chosen_sources_location.replace("//", "/");
             }
 
-            chosen_sources_location = String::from(
-                Path::new(&chosen_sources_location)
-                    .canonicalize()
-                    .unwrap()
-                    .to_string_lossy(),
-            );
+            match Path::new(&chosen_sources_location).canonicalize() {
+                Ok(result) => {
+                    chosen_sources_location = String::from(result.to_string_lossy());
+                }
+                Err(..) => {
+                    print_message(
+                        "error",
+                        &format!("invalid sources location: \"{chosen_sources_location}\""),
+                        &message_config,
+                    );
+                    return ExitCode::from(1);
+                }
+            };
 
             if chosen_sources_location.ends_with("/") == true {
                 chosen_sources_location =

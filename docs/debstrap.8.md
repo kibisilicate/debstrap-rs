@@ -48,7 +48,7 @@ and values can be separated by commas and/or whitespace.
 
     See the section **FORMATS** for more information.
 
-**-s**, **\--sources**=*DIRECTORY*|*FILENAME*
+**-s**, **\--source**, **\--sources**=*DIRECTORY*|*FILENAME*
 :   Use the provided .sources file(s).
     It can be a relative or absolute path to a .sources file or directory containing one or more .sources files.
 

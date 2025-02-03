@@ -12,7 +12,7 @@ use sources::*;
 pub mod sources;
 
 use cmd_lib::{run_cmd, run_fun};
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::Rng;
 use std::collections::HashMap;
 use std::io::{stdout, Write};
@@ -537,7 +537,7 @@ See debstrap(8) for more information."
         }
         Err(..) => {
             workspace_directory = String::from("/tmp/debstrap_")
-                + &rand::thread_rng()
+                + &rand::rng()
                     .sample_iter(&Alphanumeric)
                     .take(8)
                     .map(char::from)

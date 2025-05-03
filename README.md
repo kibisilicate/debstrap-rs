@@ -12,7 +12,6 @@ The following packages are needed for building **debstrap**:
 
 * rustc
 * cargo
-* libssl-dev
 * pandoc
 
 ### Runtime Dependencies

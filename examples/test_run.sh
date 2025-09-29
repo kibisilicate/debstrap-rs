@@ -18,14 +18,15 @@ declare -a mirrors=(
 
 declare -a suites=(
   # Debian releases:
-  'unstable'        # alias for "sid"
-  #'experimental'    # alias for "rc-buggy"
-  #'testing'         # alias for "trixie"
-  #'stable'          # alias for "bookworm"
-  #'oldstable'       # alias for "bullseye"
-  #'oldoldstable'    # alias for "buster"
+  'unstable'        # alias for 'sid'
+  #'experimental'    # alias for 'rc-buggy'
+  #'testing'         # alias for 'forky'
+  #'stable'          # alias for 'trixie'
+  #'oldstable'       # alias for 'bookworm'
+  #'oldoldstable'    # alias for 'bullseye'
   #'sid'             # latest version
   #'rc-buggy'        # latest experimental packages
+  #'forky'           # Debian 14
   #'trixie'          # Debian 13
   #'bookworm'        # Debian 12
   #'bullseye'        # Debian 11
@@ -34,6 +35,7 @@ declare -a suites=(
   #'jessie'          # Debian 8
   # Ubuntu releases:
   #'devel'           # alias for latest version
+  #'questing'        # Ubuntu 25.10
   #'plucky'          # Ubuntu 25.04
   #'oracular'        # Ubuntu 24.10
   #'noble'           # Ubuntu 24.04 LTS

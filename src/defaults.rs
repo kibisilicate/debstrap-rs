@@ -1,17 +1,18 @@
 const DEBIAN_CURRENT_SUITES: [&str; 10] = [
     "unstable",     // alias for "sid"
-    "testing",      // alias for "trixie"
-    "stable",       // alias for "bookworm"
-    "oldstable",    // alias for "bullseye"
-    "oldoldstable", // alias for "buster"
+    "testing",      // alias for "forky"
+    "stable",       // alias for "trixie"
+    "oldstable",    // alias for "bookworm"
+    "oldoldstable", // alias for "bullseye"
     "sid",          // latest version
+    "forky",        // Debian 14
     "trixie",       // Debian 13
     "bookworm",     // Debian 12
     "bullseye",     // Debian 11
-    "buster",       // Debian 10
 ];
 
-const DEBIAN_OBSOLUTE_SUITES: [&str; 2] = [
+const DEBIAN_OBSOLUTE_SUITES: [&str; 3] = [
+    "buster",  // Debian 10
     "stretch", // Debian 9
     "jessie",  // Debian 8
 ];
@@ -24,13 +25,11 @@ const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const UBUNTU_CURRENT_SUITES: [&str; 11] = [
+const UBUNTU_CURRENT_SUITES: [&str; 9] = [
     "devel",    // alias for latest version
+    "questing", // Ubuntu 25.10
     "plucky",   // Ubuntu 25.04
-    "oracular", // Ubuntu 24.10
     "noble",    // Ubuntu 24.04 LTS
-    "mantic",   // Ubuntu 23.10
-    "lunar",    // Ubuntu 23.04
     "jammy",    // Ubuntu 22.04 LTS
     "focal",    // Ubuntu 20.04 LTS
     "bionic",   // Ubuntu 18.04 LTS
@@ -38,24 +37,27 @@ const UBUNTU_CURRENT_SUITES: [&str; 11] = [
     "trusty",   // Ubuntu 14.04 LTS
 ];
 
-const UBUNTU_OBSOLETE_SUITES: [&str; 17] = [
-    "kinetic", // Ubuntu 22.10
-    "impish",  // Ubuntu 21.10
-    "hirsute", // Ubuntu 21.04
-    "groovy",  // Ubuntu 20.10
-    "eoan",    // Ubuntu 19.10
-    "disco",   // Ubuntu 19.04
-    "cosmic",  // Ubuntu 18.10
-    "artful",  // Ubuntu 17.10
-    "zesty",   // Ubuntu 17.04
-    "yakkety", // Ubuntu 16.10
-    "wily",    // Ubuntu 15.10
-    "vivid",   // Ubuntu 15.04
-    "utopic",  // Ubuntu 14.10
-    "saucy",   // Ubuntu 13.10
-    "raring",  // Ubuntu 13.04
-    "quantal", // Ubuntu 12.10
-    "precise", // Ubuntu 12.04 LTS
+const UBUNTU_OBSOLETE_SUITES: [&str; 20] = [
+    "oracular", // Ubuntu 24.10
+    "mantic",   // Ubuntu 23.10
+    "lunar",    // Ubuntu 23.04
+    "kinetic",  // Ubuntu 22.10
+    "impish",   // Ubuntu 21.10
+    "hirsute",  // Ubuntu 21.04
+    "groovy",   // Ubuntu 20.10
+    "eoan",     // Ubuntu 19.10
+    "disco",    // Ubuntu 19.04
+    "cosmic",   // Ubuntu 18.10
+    "artful",   // Ubuntu 17.10
+    "zesty",    // Ubuntu 17.04
+    "yakkety",  // Ubuntu 16.10
+    "wily",     // Ubuntu 15.10
+    "vivid",    // Ubuntu 15.04
+    "utopic",   // Ubuntu 14.10
+    "saucy",    // Ubuntu 13.10
+    "raring",   // Ubuntu 13.04
+    "quantal",  // Ubuntu 12.10
+    "precise",  // Ubuntu 12.04 LTS
 ];
 
 const UBUNTU_CURRENT_MIRROR: &str = "http://archive.ubuntu.com/ubuntu";

@@ -3,18 +3,18 @@ name = "debstrap"
 version = "0.0.5"
 authors = ["Stephany Panagaea"]
 edition = "2021"
-rust-version = "1.73"
+rust-version = "1.88"
 description = "Bootstrap overly complicated Debian systems"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byte-unit = "5.1.6"
-cmd_lib = "1.9.6"
+byte-unit = "5.2.0"
+cmd_lib = "2.0.0"
 md-5 = "0.10.6"
-rand = "0.9.2"
-reqwest = { version = "0.12.23", default-features = false, features = ["blocking", "http2", "rustls-tls", "stream"] }
+rand = "0.10.0"
+reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "http2", "rustls", "stream"] }
 sha2 = "0.10.9"
-termion = "4.0.5"
-tokio = { version = "1.47.1", features = ["full"] }
-which = "7.0.3"
+termion = "4.0.6"
+tokio = { version = "1.49.0", features = ["full"] }
+which = "8.0.0"

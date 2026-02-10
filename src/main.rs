@@ -13,7 +13,7 @@ pub mod sources;
 
 use cmd_lib::{run_cmd, run_fun};
 use rand::distr::Alphanumeric;
-use rand::Rng;
+use rand::RngExt;
 use std::collections::HashMap;
 use std::io::{stdout, Write};
 use std::path::Path;

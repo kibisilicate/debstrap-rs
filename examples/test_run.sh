@@ -9,10 +9,10 @@ declare -a mirrors=(
   # Debian mirrors:
   'https://deb.debian.org/debian'
   #'https://deb.debian.org/debian-ports'
-  #'http://archive.debian.org/debian'
+  #'https://archive.debian.org/debian'
   # Ubuntu mirrors:
-  #'http://archive.ubuntu.com/ubuntu'
-  #'http://ports.ubuntu.com/ubuntu-ports'
+  #'https://archive.ubuntu.com/ubuntu'
+  #'https://ports.ubuntu.com/ubuntu-ports'
   #'https://old-releases.ubuntu.com/ubuntu'
 )
 
@@ -35,6 +35,7 @@ declare -a suites=(
   #'jessie'          # Debian 8
   # Ubuntu releases:
   #'devel'           # alias for latest version
+  #'resolute'        # Ubuntu 26.04 LTS
   #'questing'        # Ubuntu 25.10
   #'plucky'          # Ubuntu 25.04
   #'oracular'        # Ubuntu 24.10

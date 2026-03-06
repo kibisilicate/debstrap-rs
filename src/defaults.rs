@@ -21,12 +21,13 @@ const DEBIAN_CURRENT_MIRROR: &str = "https://deb.debian.org/debian";
 
 const DEBIAN_PORTS_MIRROR: &str = "https://deb.debian.org/debian-ports";
 
-const DEBIAN_OBSOLETE_MIRROR: &str = "http://archive.debian.org/debian";
+const DEBIAN_OBSOLETE_MIRROR: &str = "https://archive.debian.org/debian";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const UBUNTU_CURRENT_SUITES: [&str; 9] = [
+const UBUNTU_CURRENT_SUITES: [&str; 10] = [
     "devel",    // alias for latest version
+    "resolute", // Ubuntu 26.04 LTS
     "questing", // Ubuntu 25.10
     "plucky",   // Ubuntu 25.04
     "noble",    // Ubuntu 24.04 LTS
@@ -60,9 +61,9 @@ const UBUNTU_OBSOLETE_SUITES: [&str; 20] = [
     "precise",  // Ubuntu 12.04 LTS
 ];
 
-const UBUNTU_CURRENT_MIRROR: &str = "http://archive.ubuntu.com/ubuntu";
+const UBUNTU_CURRENT_MIRROR: &str = "https://archive.ubuntu.com/ubuntu";
 
-const UBUNTU_PORTS_MIRROR: &str = "http://ports.ubuntu.com/ubuntu-ports";
+const UBUNTU_PORTS_MIRROR: &str = "https://ports.ubuntu.com/ubuntu-ports";
 
 const UBUNTU_OBSOLETE_MIRROR: &str = "https://old-releases.ubuntu.com/ubuntu";
 
